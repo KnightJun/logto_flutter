@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:http/http.dart' as http;
@@ -41,9 +43,8 @@ class _MyHomePageState extends State<MyHomePage> {
   String? content;
   bool? isAuthenticated;
 
-  final redirectUri = 'io.logto://callback';
-  final config = const LogtoConfig(
-      appId: 'xgSxW0MDpVqW2GDvCnlNb', endpoint: 'https://logto.dev');
+  final redirectUri = Platform.isWindows ? 'http://localhost:31689/callback' : 'io.logto://callback';
+  final config = const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'http://localhost:3001');
 
   late LogtoClient logtoClient;
 
@@ -113,9 +114,7 @@ class _MyHomePageState extends State<MyHomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            SelectableText(welcome,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            SelectableText(welcome, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             Container(
               padding: const EdgeInsets.all(64),
               child: SelectableText(

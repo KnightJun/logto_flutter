@@ -1,4 +1,6 @@
-import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'dart:io';
+
+import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
 
@@ -105,8 +107,7 @@ class LogtoClient {
     final refreshToken = await _tokenStorage.refreshToken;
 
     if (refreshToken == null) {
-      throw LogtoAuthException(
-          LogtoAuthExceptions.authenticationError, 'not_authenticated');
+      throw LogtoAuthException(LogtoAuthExceptions.authenticationError, 'not_authenticated');
     }
 
     final httpClient = _httpClient ?? http.Client();
@@ -144,29 +145,23 @@ class LogtoClient {
     }
   }
 
-  Future<void> _verifyIdToken(
-      IdToken idToken, OidcProviderConfig oidcConfig) async {
-    final keyStore = JsonWebKeyStore()
-      ..addKeySetUrl(Uri.parse(oidcConfig.jwksUri));
+  Future<void> _verifyIdToken(IdToken idToken, OidcProviderConfig oidcConfig) async {
+    final keyStore = JsonWebKeyStore()..addKeySetUrl(Uri.parse(oidcConfig.jwksUri));
 
     if (!await idToken.verify(keyStore)) {
-      throw LogtoAuthException(
-          LogtoAuthExceptions.idTokenValidationError, 'invalid jws signature');
+      throw LogtoAuthException(LogtoAuthExceptions.idTokenValidationError, 'invalid jws signature');
     }
 
-    final violations = idToken.claims
-        .validate(issuer: Uri.parse(oidcConfig.issuer), clientId: config.appId);
+    final violations = idToken.claims.validate(issuer: Uri.parse(oidcConfig.issuer), clientId: config.appId);
 
     if (violations.isNotEmpty) {
-      throw LogtoAuthException(
-          LogtoAuthExceptions.idTokenValidationError, '$violations');
+      throw LogtoAuthException(LogtoAuthExceptions.idTokenValidationError, '$violations');
     }
   }
 
   Future<void> signIn(String redirectUri) async {
     if (_loading) {
-      throw LogtoAuthException(
-          LogtoAuthExceptions.isLoadingError, 'Already signing in...');
+      throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
 
     final httpClient = _httpClient ?? http.Client();
@@ -188,9 +183,9 @@ class LogtoClient {
         scopes: config.scopes,
       );
       String? callbackUri;
-
-      final redirectUriScheme = Uri.parse(redirectUri).scheme;
-      callbackUri = await FlutterWebAuth.authenticate(
+      final urlParse = Uri.parse(redirectUri);
+      final redirectUriScheme = Platform.isWindows ? urlParse.origin : urlParse.scheme;
+      callbackUri = await FlutterWebAuth2.authenticate(
         url: signInUri.toString(),
         callbackUrlScheme: redirectUriScheme,
         preferEphemeral: true,
@@ -203,8 +198,7 @@ class LogtoClient {
     }
   }
 
-  Future _handleSignInCallback(
-      String callbackUri, String redirectUri, http.Client httpClient) async {
+  Future _handleSignInCallback(String callbackUri, String redirectUri, http.Client httpClient) async {
     final code = logto_core.verifyAndParseCodeFromCallbackUri(
       callbackUri,
       redirectUri,
@@ -240,8 +234,7 @@ class LogtoClient {
     final httpClient = _httpClient ?? http.Client();
 
     if (idToken == null) {
-      throw LogtoAuthException(
-          LogtoAuthExceptions.authenticationError, 'not authenticated');
+      throw LogtoAuthException(LogtoAuthExceptions.authenticationError, 'not authenticated');
     }
 
     try {
