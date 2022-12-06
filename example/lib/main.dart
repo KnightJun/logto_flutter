@@ -100,7 +100,7 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        await logtoClient.signOut();
+        await logtoClient.signOut(redirectUri);
         render();
       },
       child: const Text('Sign Out'),

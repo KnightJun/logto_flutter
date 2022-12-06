@@ -227,7 +227,7 @@ class LogtoClient {
         expiresIn: tokenResponse.expiresIn);
   }
 
-  Future<void> signOut() async {
+  Future<void> signOut(String redirectUri) async {
     // Throw error is authentication status not found
     final idToken = await _tokenStorage.idToken;
 
@@ -247,9 +247,21 @@ class LogtoClient {
         try {
           await logto_core.revoke(
             httpClient: httpClient,
-            revocationEndpoint: oidcConfig.authorizationEndpoint,
+            revocationEndpoint: oidcConfig.revocationEndpoint,
             clientId: config.appId,
             token: refreshToken,
+          );
+
+          final signInUri = logto_core.generateSignOutUri(
+            endSessionEndpoint: oidcConfig.endSessionEndpoint,
+            idToken: idToken.serialization,
+          );
+          final urlParse = Uri.parse(redirectUri);
+          final redirectUriScheme = Platform.isWindows ? urlParse.origin : urlParse.scheme;
+          FlutterWebAuth2.authenticate(
+            url: signInUri.toString(),
+            callbackUrlScheme: redirectUriScheme,
+            preferEphemeral: true,
           );
         } catch (e) {
           // Do Nothing silently revoke the token
