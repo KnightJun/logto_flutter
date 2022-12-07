@@ -44,7 +44,8 @@ class _MyHomePageState extends State<MyHomePage> {
   bool? isAuthenticated;
 
   final redirectUri = 'io.logto://callback';
-  final config = const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'http://localhost:3001', scheme: 'io.logto');
+  final config =
+      const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'https://login.jpgupup.com', scheme: 'io.logto');
 
   late LogtoClient logtoClient;
 
