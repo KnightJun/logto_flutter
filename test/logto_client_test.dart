@@ -18,7 +18,7 @@ void main() {
     const String appId = 'foo';
     const String endpoint = 'foo@siverhand.io';
 
-    const config = LogtoConfig(appId: 'foo', endpoint: 'foo@siverhand.io');
+    const config = LogtoConfig(appId: 'foo', endpoint: 'foo@siverhand.io', scheme: "");
 
     final logto = LogtoClient(
       config: config,

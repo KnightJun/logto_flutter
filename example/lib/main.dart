@@ -43,8 +43,8 @@ class _MyHomePageState extends State<MyHomePage> {
   String? content;
   bool? isAuthenticated;
 
-  final redirectUri = Platform.isWindows ? 'http://localhost:31689/callback' : 'io.logto://callback';
-  final config = const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'http://localhost:3001');
+  final redirectUri = 'io.logto://callback';
+  final config = const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'http://localhost:3001', scheme: 'io.logto');
 
   late LogtoClient logtoClient;
 

@@ -1,8 +1,9 @@
 import 'dart:io';
 
-import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
+import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
+import 'package:logto_dart_sdk/flutter_web_auth_windows.dart';
 
 import '/src/exceptions/logto_auth_exceptions.dart';
 import '/src/interfaces/logto_interfaces.dart';
@@ -13,7 +14,6 @@ import '/src/modules/token_storage.dart';
 import '/src/utilities/constants.dart';
 import '/src/utilities/utils.dart' as utils;
 import 'logto_core.dart' as logto_core;
-
 export '/src/interfaces/logto_config.dart';
 
 // Logto SDK
@@ -31,6 +31,12 @@ class LogtoClient {
   /// Use a request cache map to avoid the race condition
   static final Map<String, Future<AccessToken?>> _accessTokenRequestCache = {};
 
+  static Future<String> Function({
+    required String url,
+    required String callbackUrlScheme,
+    required bool preferEphemeral,
+  // ignore: non_constant_identifier_names
+  })? FlutterWebAuthAuthenticate;
   /// Custom [http.Client].
   ///
   /// Note that you will have to call `close()` yourself when passing a [http.Client] instance.
@@ -49,6 +55,14 @@ class LogtoClient {
   }) {
     _httpClient = httpClient;
     _tokenStorage = TokenStorage(storageProvider);
+    if(FlutterWebAuthAuthenticate == null){
+      if(Platform.isWindows){
+        FlutterWebAuthAuthenticate = FlutterWebAuthWindows.authenticate;
+        FlutterWebAuthWindows.registerScheme(config.scheme);
+      }else{
+        FlutterWebAuthAuthenticate = FlutterWebAuth.authenticate;
+      }
+    }
   }
 
   Future<bool> get isAuthenticated async {
@@ -184,8 +198,8 @@ class LogtoClient {
       );
       String? callbackUri;
       final urlParse = Uri.parse(redirectUri);
-      final redirectUriScheme = Platform.isWindows ? urlParse.origin : urlParse.scheme;
-      callbackUri = await FlutterWebAuth2.authenticate(
+      final redirectUriScheme = urlParse.scheme;
+      callbackUri = await FlutterWebAuthAuthenticate!(
         url: signInUri.toString(),
         callbackUrlScheme: redirectUriScheme,
         preferEphemeral: true,
@@ -257,8 +271,8 @@ class LogtoClient {
             idToken: idToken.serialization,
           );
           final urlParse = Uri.parse(redirectUri);
-          final redirectUriScheme = Platform.isWindows ? urlParse.origin : urlParse.scheme;
-          FlutterWebAuth2.authenticate(
+          final redirectUriScheme = urlParse.scheme;
+          FlutterWebAuthAuthenticate!(
             url: signInUri.toString(),
             callbackUrlScheme: redirectUriScheme,
             preferEphemeral: true,
