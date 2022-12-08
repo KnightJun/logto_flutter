@@ -59,7 +59,7 @@ void main() {
     var signOutUri = logto_core.generateSignOutUri(
         endSessionEndpoint: endSessionEndpoint,
         idToken: idToken,
-        postLogoutRedirectUri: Uri.parse(postLogoutRedirectUri));
+        postLogoutRedirectUri: postLogoutRedirectUri);
 
     expect(signOutUri.scheme, 'https');
     expect(signOutUri.host, 'foo.com');

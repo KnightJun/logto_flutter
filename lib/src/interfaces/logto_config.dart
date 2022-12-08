@@ -3,6 +3,7 @@ class LogtoConfig {
   final String appId;
   final String? appSecret;
   final String scheme;
+  final String schemeDescription;
   final List<String>? scopes;
   final List<String>? resources;
 
@@ -10,6 +11,7 @@ class LogtoConfig {
     required this.appId,
     required this.endpoint,
     required this.scheme,
+    required this.schemeDescription,
     this.appSecret,
     this.resources,
     this.scopes,

@@ -16,6 +16,18 @@ import '/src/utilities/utils.dart' as utils;
 import 'logto_core.dart' as logto_core;
 export '/src/interfaces/logto_config.dart';
 
+enum LogtoClientState { 
+  none, 
+  prepareLogin, 
+  waitingUserLogin, 
+  userCancelLogin, 
+  gettingUserInfo, 
+  loginFinish, 
+  prepareLogout,
+  waitingLogout,
+  logoutFinish,
+ }
+
 // Logto SDK
 class LogtoClient {
   final LogtoConfig config;
@@ -35,8 +47,9 @@ class LogtoClient {
     required String url,
     required String callbackUrlScheme,
     required bool preferEphemeral,
-  // ignore: non_constant_identifier_names
+    // ignore: non_constant_identifier_names
   })? FlutterWebAuthAuthenticate;
+
   /// Custom [http.Client].
   ///
   /// Note that you will have to call `close()` yourself when passing a [http.Client] instance.
@@ -47,6 +60,8 @@ class LogtoClient {
   bool get loading => _loading;
 
   OidcProviderConfig? _oidcConfig;
+  LogtoClientState _loginState = LogtoClientState.none;
+  void Function(LogtoClientState state)? onLoginStateChange;
 
   LogtoClient({
     required this.config,
@@ -55,14 +70,23 @@ class LogtoClient {
   }) {
     _httpClient = httpClient;
     _tokenStorage = TokenStorage(storageProvider);
-    if(FlutterWebAuthAuthenticate == null){
-      if(Platform.isWindows){
+    if (FlutterWebAuthAuthenticate == null) {
+      if (Platform.isWindows) {
         FlutterWebAuthAuthenticate = FlutterWebAuthWindows.authenticate;
-        FlutterWebAuthWindows.registerScheme(config.scheme);
-      }else{
+        FlutterWebAuthWindows.registerScheme(config.scheme, config.schemeDescription);
+      } else {
         FlutterWebAuthAuthenticate = FlutterWebAuth.authenticate;
       }
     }
+  }
+
+  Future<void> cleanResources() async {
+    await FlutterWebAuthWindows.unregisterScheme(config.scheme);
+  }
+
+  void changeState(LogtoClientState state) {
+    _loginState = state;
+    onLoginStateChange?.call(_loginState);
   }
 
   Future<bool> get isAuthenticated async {
@@ -182,6 +206,7 @@ class LogtoClient {
 
     try {
       _loading = true;
+      changeState(LogtoClientState.prepareLogin);
       _pkce = PKCE.generate();
       _state = utils.generateRandomString();
       _tokenStorage.setIdToken(null);
@@ -199,13 +224,16 @@ class LogtoClient {
       String? callbackUri;
       final urlParse = Uri.parse(redirectUri);
       final redirectUriScheme = urlParse.scheme;
+      changeState(LogtoClientState.waitingUserLogin);
       callbackUri = await FlutterWebAuthAuthenticate!(
         url: signInUri.toString(),
         callbackUrlScheme: redirectUriScheme,
         preferEphemeral: true,
       );
 
+      changeState(LogtoClientState.gettingUserInfo);
       await _handleSignInCallback(callbackUri, redirectUri, httpClient);
+      changeState(LogtoClientState.loginFinish);
     } finally {
       _loading = false;
       if (_httpClient == null) httpClient.close();
@@ -259,6 +287,7 @@ class LogtoClient {
 
       if (refreshToken != null) {
         try {
+          changeState(LogtoClientState.prepareLogout);
           await logto_core.revoke(
             httpClient: httpClient,
             revocationEndpoint: oidcConfig.revocationEndpoint,
@@ -266,17 +295,20 @@ class LogtoClient {
             token: refreshToken,
           );
 
+          changeState(LogtoClientState.waitingLogout);
           final signInUri = logto_core.generateSignOutUri(
             endSessionEndpoint: oidcConfig.endSessionEndpoint,
             idToken: idToken.serialization,
+            postLogoutRedirectUri: redirectUri,
           );
           final urlParse = Uri.parse(redirectUri);
           final redirectUriScheme = urlParse.scheme;
-          FlutterWebAuthAuthenticate!(
+          await FlutterWebAuthAuthenticate!(
             url: signInUri.toString(),
             callbackUrlScheme: redirectUriScheme,
             preferEphemeral: true,
           );
+          changeState(LogtoClientState.logoutFinish);
         } catch (e) {
           // Do Nothing silently revoke the token
         }

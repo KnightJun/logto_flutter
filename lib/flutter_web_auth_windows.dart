@@ -10,7 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:win32/win32.dart';
 
-Future<void> _registerScheme(String scheme) async {
+Future<void> _registerScheme(String scheme, String schemeDescription) async {
     String appPath = Platform.resolvedExecutable;
 
     final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.exe");
@@ -19,6 +19,12 @@ Future<void> _registerScheme(String scheme) async {
       'URL Protocol',
       RegistryValueType.string,
       '',
+    );
+    
+    RegistryValue descriptionValue = RegistryValue(
+      '',
+      RegistryValueType.string,
+      schemeDescription,
     );
     String protocolCmdRegKey = 'shell\\open\\command';
     RegistryValue protocolCmdRegValue = RegistryValue(
@@ -29,9 +35,15 @@ Future<void> _registerScheme(String scheme) async {
 
     final regKey = Registry.currentUser.createKey(protocolRegKey);
     regKey.createValue(protocolRegValue);
+    regKey.createValue(descriptionValue);
     regKey.createKey(protocolCmdRegKey).createValue(protocolCmdRegValue);
 }
-
+Future<void> _unregisterScheme(String scheme) async {
+    String protocolRegKey = 'Software\\Classes\\$scheme';
+    // it will cause a bug
+    // Registry.currentUser.deleteKey(protocolRegKey);
+    return;
+}
 Future<void> _releaseUrlCallbackProgram(String scheme) async
 {
   String appPath = Platform.resolvedExecutable;
@@ -59,7 +71,7 @@ Future<String?> _waitSchemeCallBack(String scheme, {double overtime = 90*1000}) 
   final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.cb");
   String? cbText;
   while (overtime > 0) {
-    sleep(const Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
     if(await File(releaseTarget).exists()){
       final callbackfile = await File(releaseTarget).open(mode: FileMode.read);
       cbText = utf8.decode((await callbackfile.read(await callbackfile.length())).buffer.asInt8List());
@@ -75,9 +87,13 @@ Future<String?> _waitSchemeCallBack(String scheme, {double overtime = 90*1000}) 
 class FlutterWebAuthWindows {
 
   /// Registers the Windows implementation.
-  static void registerScheme(String scheme) {
-    _registerScheme(scheme);
+  static void registerScheme(String scheme, String schemeDescription) {
+    _registerScheme(scheme, schemeDescription);
     _releaseUrlCallbackProgram(scheme);
+  }
+
+  static Future<void> unregisterScheme(String scheme) async {
+    await _unregisterScheme(scheme);
   }
 
   static Future<String> authenticate({

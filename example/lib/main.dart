@@ -45,7 +45,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final redirectUri = 'io.logto://callback';
   final config =
-      const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'https://login.jpgupup.com', scheme: 'io.logto');
+      const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', endpoint: 'https://login.jpgupup.com', scheme: 'io.logto', schemeDescription: 'logtoExample');
 
   late LogtoClient logtoClient;
 
@@ -53,6 +53,11 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _init();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   void render() async {
