@@ -90,7 +90,7 @@ class FlutterWebAuthWindows {
       _bringWindowToFront();
       return result;
     }
-    throw const SignalException('User canceled login');
+    throw PlatformException(message: 'User canceled login', code: 'CANCELED');
   }
 
   static Future<String?> _waitSchemeCallBack(String scheme) async {

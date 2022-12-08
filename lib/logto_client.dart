@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
 import 'package:jose/jose.dart';
@@ -225,12 +226,12 @@ class LogtoClient {
       final redirectUriScheme = urlParse.scheme;
       changeState(LogtoClientState.waitingUserLogin);
       try {
-      callbackUri = await FlutterWebAuthAuthenticate!(
-        url: signInUri.toString(),
-        callbackUrlScheme: redirectUriScheme,
-        preferEphemeral: true,
-      );
-      } on SignalException catch (e) {
+        callbackUri = await FlutterWebAuthAuthenticate!(
+          url: signInUri.toString(),
+          callbackUrlScheme: redirectUriScheme,
+          preferEphemeral: true,
+        );
+      } on PlatformException catch (e) {
         changeState(LogtoClientState.userCancelLogin);
         return;
       }
@@ -326,7 +327,7 @@ class LogtoClient {
     }
   }
 
-  void cancelSignIn(){
+  void cancelSignIn() {
     if (Platform.isWindows) {
       FlutterWebAuthWindows.cancelFlag = true;
     }
