@@ -41,7 +41,6 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   static String welcome = 'Logto SDK Demo Home Page';
   String? content;
-  bool? isAuthenticated;
 
   final redirectUri = 'io.logto://callback';
   final config =
@@ -51,27 +50,17 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
-    super.initState();
     _init();
+    super.initState();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
 
-  void render() async {
-    if (await logtoClient.isAuthenticated) {
+  Future<void> onLoginStateChange(LogtoClientState state) async {
+    if (logtoClient.loginState == LogtoClientState.loginFinish) {
       var claims = await logtoClient.idTokenClaims;
-      setState(() {
-        content = claims!.toJson().toString();
-        isAuthenticated = true;
-      });
-      return;
+      content = claims!.toJson().toString();
     }
     setState(() {
-      content = '';
-      isAuthenticated = false;
     });
   }
 
@@ -80,7 +69,10 @@ class _MyHomePageState extends State<MyHomePage> {
       config: config,
       httpClient: http.Client(),
     );
-    render();
+    logtoClient.onLoginStateChange = ((state) {
+      onLoginStateChange(state);
+    });
+    logtoClient.tryRecoverId();
   }
 
   @override
@@ -94,7 +86,6 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       onPressed: () async {
         await logtoClient.signIn(redirectUri);
-        render();
       },
       child: const Text('Sign In'),
     );
@@ -107,9 +98,20 @@ class _MyHomePageState extends State<MyHomePage> {
       ),
       onPressed: () async {
         await logtoClient.signOut(redirectUri);
-        render();
       },
       child: const Text('Sign Out'),
+    );
+
+    Widget cancelButton = TextButton(
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.black,
+        padding: const EdgeInsets.all(16.0),
+        textStyle: const TextStyle(fontSize: 20),
+      ),
+      onPressed: () async {
+        logtoClient.cancelSignIn();
+      },
+      child: const Text('cancel'),
     );
 
     return Scaffold(
@@ -124,14 +126,12 @@ class _MyHomePageState extends State<MyHomePage> {
             Container(
               padding: const EdgeInsets.all(64),
               child: SelectableText(
-                content ?? '',
+                logtoClient.loginState.name,
               ),
             ),
-            isAuthenticated != null
-                ? isAuthenticated == true
+            logtoClient.loginState == LogtoClientState.loginFinish
                     ? signOutButton
-                    : signInButton
-                : const SizedBox.shrink()
+                    : logtoClient.loginState == LogtoClientState.waitingUserLogin? cancelButton : signInButton
           ],
         ),
       ),

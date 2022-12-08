@@ -11,41 +11,42 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:win32/win32.dart';
 
 Future<void> _registerScheme(String scheme, String schemeDescription) async {
-    String appPath = Platform.resolvedExecutable;
+  String appPath = Platform.resolvedExecutable;
 
-    final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.exe");
-    String protocolRegKey = 'Software\\Classes\\$scheme';
-    RegistryValue protocolRegValue = const RegistryValue(
-      'URL Protocol',
-      RegistryValueType.string,
-      '',
-    );
-    
-    RegistryValue descriptionValue = RegistryValue(
-      '',
-      RegistryValueType.string,
-      schemeDescription,
-    );
-    String protocolCmdRegKey = 'shell\\open\\command';
-    RegistryValue protocolCmdRegValue = RegistryValue(
-      '',
-      RegistryValueType.string,
-      '$releaseTarget "%1"',
-    );
+  final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.exe");
+  String protocolRegKey = 'Software\\Classes\\$scheme';
+  RegistryValue protocolRegValue = const RegistryValue(
+    'URL Protocol',
+    RegistryValueType.string,
+    '',
+  );
 
-    final regKey = Registry.currentUser.createKey(protocolRegKey);
-    regKey.createValue(protocolRegValue);
-    regKey.createValue(descriptionValue);
-    regKey.createKey(protocolCmdRegKey).createValue(protocolCmdRegValue);
+  RegistryValue descriptionValue = RegistryValue(
+    '',
+    RegistryValueType.string,
+    schemeDescription,
+  );
+  String protocolCmdRegKey = 'shell\\open\\command';
+  RegistryValue protocolCmdRegValue = RegistryValue(
+    '',
+    RegistryValueType.string,
+    '$releaseTarget "%1"',
+  );
+
+  final regKey = Registry.currentUser.createKey(protocolRegKey);
+  regKey.createValue(protocolRegValue);
+  regKey.createValue(descriptionValue);
+  regKey.createKey(protocolCmdRegKey).createValue(protocolCmdRegValue);
 }
+
 Future<void> _unregisterScheme(String scheme) async {
-    String protocolRegKey = 'Software\\Classes\\$scheme';
-    // it will cause a bug
-    // Registry.currentUser.deleteKey(protocolRegKey);
-    return;
+  String protocolRegKey = 'Software\\Classes\\$scheme';
+  // it will cause a bug
+  // Registry.currentUser.deleteKey(protocolRegKey);
+  return;
 }
-Future<void> _releaseUrlCallbackProgram(String scheme) async
-{
+
+Future<void> _releaseUrlCallbackProgram(String scheme) async {
   String appPath = Platform.resolvedExecutable;
   final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.exe");
   // if(await File(releaseTarget).exists()){
@@ -57,34 +58,17 @@ Future<void> _releaseUrlCallbackProgram(String scheme) async
   await callbackexe.close();
 }
 
-Future<void> _cleanSchemeCallBack(String scheme, {double overtime = 90*1000}) async
-{
+Future<void> _cleanSchemeCallBack(String scheme, {double overtime = 90 * 1000}) async {
   String appPath = Platform.resolvedExecutable;
   final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.cb");
-  if(await File(releaseTarget).exists()){
+  if (await File(releaseTarget).exists()) {
     File(releaseTarget).delete();
   }
 }
-Future<String?> _waitSchemeCallBack(String scheme, {double overtime = 90*1000}) async
-{
-  String appPath = Platform.resolvedExecutable;
-  final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.cb");
-  String? cbText;
-  while (overtime > 0) {
-    await Future.delayed(const Duration(milliseconds: 500));
-    if(await File(releaseTarget).exists()){
-      final callbackfile = await File(releaseTarget).open(mode: FileMode.read);
-      cbText = utf8.decode((await callbackfile.read(await callbackfile.length())).buffer.asInt8List());
-      await callbackfile.close();
-      File(releaseTarget).delete();
-      break;
-    }
-    overtime -= 500;
-  }
-  return cbText;
-}
+
 /// Implements the plugin interface for Windows.
 class FlutterWebAuthWindows {
+  static bool cancelFlag = false;
 
   /// Registers the Windows implementation.
   static void registerScheme(String scheme, String schemeDescription) {
@@ -96,19 +80,34 @@ class FlutterWebAuthWindows {
     await _unregisterScheme(scheme);
   }
 
-  static Future<String> authenticate({
-    required String url,
-    required String callbackUrlScheme,
-    required bool preferEphemeral
-  }) async {
+  static Future<String> authenticate(
+      {required String url, required String callbackUrlScheme, required bool preferEphemeral}) async {
     await _cleanSchemeCallBack(callbackUrlScheme);
     await launchUrl(Uri.parse(url));
+    cancelFlag = false;
     final result = await _waitSchemeCallBack(callbackUrlScheme);
     if (result != null) {
       _bringWindowToFront();
       return result;
     }
-    throw PlatformException(message: 'User canceled login', code: 'CANCELED');
+    throw const SignalException('User canceled login');
+  }
+
+  static Future<String?> _waitSchemeCallBack(String scheme) async {
+    String appPath = Platform.resolvedExecutable;
+    final releaseTarget = pathlib.join(pathlib.dirname(appPath), "$scheme.cb");
+    String? cbText;
+    while (cancelFlag == false) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (await File(releaseTarget).exists()) {
+        final callbackfile = await File(releaseTarget).open(mode: FileMode.read);
+        cbText = utf8.decode((await callbackfile.read(await callbackfile.length())).buffer.asInt8List());
+        await callbackfile.close();
+        File(releaseTarget).delete();
+        break;
+      }
+    }
+    return cbText;
   }
 
   static void _bringWindowToFront() {
@@ -137,5 +136,4 @@ class FlutterWebAuthWindows {
     SetActiveWindow(mHWnd);
     AttachThreadInput(dwCurID, dwMyID, FALSE);
   }
-
 }
