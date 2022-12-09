@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/http.dart';
 import 'package:jose/jose.dart';
 import 'package:logto_dart_sdk/flutter_web_auth_windows.dart';
 
@@ -21,7 +22,6 @@ enum LogtoClientState {
   unlogin,
   prepareLogin,
   waitingUserLogin,
-  userCancelLogin,
   gettingUserInfo,
   loginFinish,
   prepareLogout,
@@ -62,6 +62,8 @@ class LogtoClient {
   OidcProviderConfig? _oidcConfig;
   LogtoClientState loginState = LogtoClientState.unlogin;
   void Function(LogtoClientState state)? onLoginStateChange;
+  void Function()? onUserCancelLogin;
+  void Function()? onNetworkError;
 
   LogtoClient({
     required this.config,
@@ -207,41 +209,45 @@ class LogtoClient {
     try {
       _loading = true;
       changeState(LogtoClientState.prepareLogin);
-      _pkce = PKCE.generate();
-      _state = utils.generateRandomString();
-      _tokenStorage.setIdToken(null);
-      final oidcConfig = await _getOidcConfig(httpClient);
-
-      final signInUri = logto_core.generateSignInUri(
-        authorizationEndpoint: oidcConfig.authorizationEndpoint,
-        clientId: config.appId,
-        redirectUri: redirectUri,
-        codeChallenge: _pkce.codeChallenge,
-        state: _state,
-        resources: config.resources,
-        scopes: config.scopes,
-      );
-      String? callbackUri;
-      final urlParse = Uri.parse(redirectUri);
-      final redirectUriScheme = urlParse.scheme;
-      changeState(LogtoClientState.waitingUserLogin);
       try {
+        _pkce = PKCE.generate();
+        _state = utils.generateRandomString();
+        _tokenStorage.setIdToken(null);
+        final oidcConfig = await _getOidcConfig(httpClient);
+
+        final signInUri = logto_core.generateSignInUri(
+          authorizationEndpoint: oidcConfig.authorizationEndpoint,
+          clientId: config.appId,
+          redirectUri: redirectUri,
+          codeChallenge: _pkce.codeChallenge,
+          state: _state,
+          resources: config.resources,
+          scopes: config.scopes,
+        );
+        String? callbackUri;
+        final urlParse = Uri.parse(redirectUri);
+        final redirectUriScheme = urlParse.scheme;
+        changeState(LogtoClientState.waitingUserLogin);
         callbackUri = await FlutterWebAuthAuthenticate!(
           url: signInUri.toString(),
           callbackUrlScheme: redirectUriScheme,
           preferEphemeral: true,
         );
-      } on PlatformException catch (e) {
-        changeState(LogtoClientState.userCancelLogin);
-        return;
+        changeState(LogtoClientState.gettingUserInfo);
+        await _handleSignInCallback(callbackUri, redirectUri, httpClient);
+        changeState(LogtoClientState.loginFinish);
+      } on PlatformException {
+        onUserCancelLogin?.call();
+        changeState(LogtoClientState.unlogin);
+      } on ClientException {
+        onNetworkError?.call();
+        changeState(LogtoClientState.unlogin);
       }
-      changeState(LogtoClientState.gettingUserInfo);
-      await _handleSignInCallback(callbackUri, redirectUri, httpClient);
-      changeState(LogtoClientState.loginFinish);
     } finally {
       _loading = false;
       if (_httpClient == null) httpClient.close();
     }
+    return;
   }
 
   Future _handleSignInCallback(String callbackUri, String redirectUri, http.Client httpClient) async {
