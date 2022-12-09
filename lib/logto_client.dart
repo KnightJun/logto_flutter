@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/services.dart';
@@ -23,6 +24,7 @@ enum LogtoClientState {
   unlogin,
   prepareLogin,
   waitingUserLogin,
+  authorization,
   gettingUserInfo,
   loginFinish,
   prepareLogout,
@@ -61,6 +63,7 @@ class LogtoClient {
   bool get loading => _loading;
 
   OidcProviderConfig? _oidcConfig;
+  late final LogtoStorageStrategy _storage;
   LogtoClientState loginState = LogtoClientState.unlogin;
   void Function(LogtoClientState state)? onLoginStateChange;
   void Function()? onUserCancelLogin;
@@ -72,7 +75,8 @@ class LogtoClient {
     http.Client? httpClient,
   }) {
     _httpClient = httpClient;
-    _tokenStorage = TokenStorage(storageProvider);
+    _storage = storageProvider ?? SecureStorageStrategy();
+    _tokenStorage = TokenStorage(_storage);
     if (FlutterWebAuthAuthenticate == null) {
       if (Platform.isWindows) {
         FlutterWebAuthAuthenticate = FlutterWebAuthWindows.authenticate;
@@ -120,8 +124,13 @@ class LogtoClient {
   Future<LogtoUserInfoResponse> fetchUserInfo(http.Client httpClient) async {
     final userInfoEndpoint = utils.appendUriPath(config.endpoint, '/oidc/me');
     final accessToken = (await _tokenStorage.getAccessToken())!;
-    return await logto_core.fetchUserInfo(httpClient: httpClient,
-     userInfoEndpoint:userInfoEndpoint, accessToken:accessToken.token, scopes: config.scopes);
+    final userInfo = await logto_core.fetchUserInfo(
+        httpClient: httpClient,
+        userInfoEndpoint: userInfoEndpoint,
+        accessToken: accessToken.token,
+        scopes: config.scopes);
+    _storage.write(key: "logtoUserInfo", value: jsonEncode(userInfo.toJson()));
+    return userInfo;
   }
 
   Future<AccessToken?> getAccessToken({String? resource}) async {
@@ -207,7 +216,7 @@ class LogtoClient {
     }
   }
 
-  Future<void> signIn(String redirectUri) async {
+  Future<void> signIn(String redirectUri, {void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
     if (_loading) {
       throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
@@ -241,8 +250,12 @@ class LogtoClient {
           callbackUrlScheme: redirectUriScheme,
           preferEphemeral: true,
         );
-        changeState(LogtoClientState.gettingUserInfo);
+        changeState(LogtoClientState.authorization);
         await _handleSignInCallback(callbackUri, redirectUri, httpClient);
+        if (getUserInfoCB != null) {
+          changeState(LogtoClientState.gettingUserInfo);
+          getUserInfoCB.call(await fetchUserInfo(httpClient));
+        }
         changeState(LogtoClientState.loginFinish);
       } on PlatformException {
         onUserCancelLogin?.call();
@@ -350,8 +363,15 @@ class LogtoClient {
     }
   }
 
-  Future<void> tryRecoverId() async {
+  Future<void> tryRecoverId({void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
     if (await isAuthenticated) {
+      if (getUserInfoCB != null) {
+        final logtoUserInfoString = await _storage.read(key: "logtoUserInfo");
+        if (logtoUserInfoString == null) {
+          return;
+        }
+        getUserInfoCB(LogtoUserInfoResponse.fromJson(jsonDecode(logtoUserInfoString)));
+      }
       changeState(LogtoClientState.loginFinish);
     }
   }

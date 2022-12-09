@@ -43,8 +43,12 @@ class _MyHomePageState extends State<MyHomePage> {
   String? content;
 
   final redirectUri = 'io.logto://callback';
-  final config =
-      const LogtoConfig(appId: 'ez8bpDXRZesPVFQFNLCBf', scopes: ['custom_data'], endpoint: 'https://login.jpgupup.com', scheme: 'io.logto', schemeDescription: 'logtoExample');
+  final config = const LogtoConfig(
+      appId: 'ez8bpDXRZesPVFQFNLCBf',
+      scopes: ['custom_data'],
+      endpoint: 'https://login.jpgupup.com',
+      scheme: 'io.logto',
+      schemeDescription: 'logtoExample');
 
   late LogtoClient logtoClient;
 
@@ -54,14 +58,12 @@ class _MyHomePageState extends State<MyHomePage> {
     super.initState();
   }
 
-
   Future<void> onLoginStateChange(LogtoClientState state) async {
     if (logtoClient.loginState == LogtoClientState.loginFinish) {
       var claims = await logtoClient.idTokenClaims;
       content = claims!.toJson().toString();
     }
-    setState(() {
-    });
+    setState(() {});
   }
 
   void _init() async {
@@ -72,7 +74,11 @@ class _MyHomePageState extends State<MyHomePage> {
     logtoClient.onLoginStateChange = ((state) {
       onLoginStateChange(state);
     });
-    logtoClient.tryRecoverId();
+    logtoClient.tryRecoverId(
+      getUserInfoCB: (userInfo) {
+        print(userInfo.toJson());
+      },
+    );
   }
 
   @override
@@ -85,7 +91,12 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        await logtoClient.signIn(redirectUri);
+        await logtoClient.signIn(
+          redirectUri,
+          getUserInfoCB: (userInfo) {
+            print(userInfo.toJson());
+          },
+        );
       },
       child: const Text('Sign In'),
     );
@@ -97,7 +108,7 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        await logtoClient.signOut(redirectUri);
+        await logtoClient.signOut(redirectUri, completelySignOut: true);
       },
       child: const Text('Sign Out'),
     );
@@ -130,8 +141,10 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
             logtoClient.loginState == LogtoClientState.loginFinish
-                    ? signOutButton
-                    : logtoClient.loginState == LogtoClientState.waitingUserLogin? cancelButton : signInButton
+                ? signOutButton
+                : logtoClient.loginState == LogtoClientState.waitingUserLogin
+                    ? cancelButton
+                    : signInButton
           ],
         ),
       ),
