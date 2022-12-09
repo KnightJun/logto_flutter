@@ -242,6 +242,9 @@ class LogtoClient {
       } on ClientException {
         onNetworkError?.call();
         changeState(LogtoClientState.unlogin);
+      } on HandshakeException {
+        onNetworkError?.call();
+        changeState(LogtoClientState.unlogin);
       }
     } finally {
       _loading = false;
