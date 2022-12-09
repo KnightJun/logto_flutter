@@ -14,16 +14,18 @@ class LogtoUserInfoResponse {
   final String? avatar;
   @JsonKey(name: 'role_names')
   final List<String>? roleNames;
+  @JsonKey(name: 'custom_data')
+  final Map<String, dynamic>? customData;
 
   LogtoUserInfoResponse(
       {required this.sub,
       this.username,
       this.name,
       this.avatar,
-      this.roleNames});
+      this.roleNames,
+      this.customData,});
 
-  factory LogtoUserInfoResponse.fromJson(Map<String, dynamic> json) =>
-      _$LogtoUserInfoResponseFromJson(json);
+  factory LogtoUserInfoResponse.fromJson(Map<String, dynamic> json) => _$LogtoUserInfoResponseFromJson(json);
 
   Map<String, dynamic> toJson() => _$LogtoUserInfoResponseToJson(this);
 }

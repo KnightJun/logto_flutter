@@ -16,6 +16,7 @@ import '/src/modules/token_storage.dart';
 import '/src/utilities/constants.dart';
 import '/src/utilities/utils.dart' as utils;
 import 'logto_core.dart' as logto_core;
+import 'src/interfaces/logto_user_info_response.dart';
 export '/src/interfaces/logto_config.dart';
 
 enum LogtoClientState {
@@ -114,6 +115,13 @@ class LogtoClient {
     _oidcConfig = await logto_core.fetchOidcConfig(httpClient, discoveryUri);
 
     return _oidcConfig!;
+  }
+
+  Future<LogtoUserInfoResponse> fetchUserInfo(http.Client httpClient) async {
+    final userInfoEndpoint = utils.appendUriPath(config.endpoint, '/oidc/me');
+    final accessToken = (await _tokenStorage.getAccessToken())!;
+    return await logto_core.fetchUserInfo(httpClient: httpClient,
+     userInfoEndpoint:userInfoEndpoint, accessToken:accessToken.token, scopes: config.scopes);
   }
 
   Future<AccessToken?> getAccessToken({String? resource}) async {

@@ -12,8 +12,7 @@ const String _responseType = 'code';
 const String _prompt = 'consent';
 const String _requestContentType = 'application/x-www-form-urlencoded';
 
-Future<OidcProviderConfig> fetchOidcConfig(
-    http.Client httpClient, String endpoint) async {
+Future<OidcProviderConfig> fetchOidcConfig(http.Client httpClient, String endpoint) async {
   final response = await httpClient.get(Uri.parse(endpoint));
 
   var body = httpResponseHandler(response);
@@ -41,8 +40,8 @@ Future<LogtoCodeTokenResponse> fetchTokenByAuthorizationCode(
     payload.addAll({'resource': resource});
   }
 
-  final response = await httpClient.post(Uri.parse(tokenEndPoint),
-      headers: {'Content-Type': _requestContentType}, body: payload);
+  final response =
+      await httpClient.post(Uri.parse(tokenEndPoint), headers: {'Content-Type': _requestContentType}, body: payload);
 
   var body = httpResponseHandler(response);
 
@@ -71,8 +70,8 @@ Future<LogtoRefreshTokenResponse> fetchTokenByRefreshToken({
     payload.addAll({'scope': scopes.join(' ')});
   }
 
-  final response = await httpClient.post(Uri.parse(tokenEndPoint),
-      headers: {'Content-Type': _requestContentType}, body: payload);
+  final response =
+      await httpClient.post(Uri.parse(tokenEndPoint), headers: {'Content-Type': _requestContentType}, body: payload);
 
   var body = httpResponseHandler(response);
 
@@ -82,9 +81,12 @@ Future<LogtoRefreshTokenResponse> fetchTokenByRefreshToken({
 Future<LogtoUserInfoResponse> fetchUserInfo(
     {required http.Client httpClient,
     required String userInfoEndpoint,
-    required String accessToken}) async {
+    required String accessToken,
+    List<String>? scopes}) async {
+  Set<String> defalutScopes = {"openid", "profile"};
+  if(scopes!=null)defalutScopes.addAll(scopes);
   final response = await httpClient.post(Uri.parse(userInfoEndpoint),
-      headers: {'Authorization': 'Bearer $accessToken'});
+      headers: {'Authorization': 'Bearer $accessToken'}, body: {'scope': defalutScopes.join(' ')});
 
   var body = httpResponseHandler(response);
 
@@ -98,8 +100,7 @@ Future<void> revoke({
   required String token,
 }) =>
     httpClient.post(Uri.parse(revocationEndpoint),
-        headers: {'Content-Type': _requestContentType},
-        body: {'client_id': clientId, 'token': token});
+        headers: {'Content-Type': _requestContentType}, body: {'client_id': clientId, 'token': token});
 
 Uri generateSignInUri(
     {required String authorizationEndpoint,
@@ -137,39 +138,31 @@ Uri generateSignOutUri({
 }) {
   var signOutUri = Uri.parse(endSessionEndpoint);
 
-  return addQueryParameters(signOutUri, {
-    'id_token_hint': idToken,
-    'post_logout_redirect_uri': postLogoutRedirectUri
-  });
+  return addQueryParameters(signOutUri, {'id_token_hint': idToken, 'post_logout_redirect_uri': postLogoutRedirectUri});
 }
 
-String verifyAndParseCodeFromCallbackUri(
-    String callbackUri, String redirectUri, String state) {
+String verifyAndParseCodeFromCallbackUri(String callbackUri, String redirectUri, String state) {
   if (!callbackUri.startsWith(redirectUri)) {
-    throw LogtoAuthException(
-        LogtoAuthExceptions.callbackUriValidationError, 'invalid redirect uri');
+    throw LogtoAuthException(LogtoAuthExceptions.callbackUriValidationError, 'invalid redirect uri');
   }
 
   var queryParams = Uri.parse(callbackUri).queryParameters;
 
   if (queryParams['error'] != null) {
-    throw LogtoAuthException(LogtoAuthExceptions.callbackUriValidationError,
-        queryParams['error']!, queryParams['error_description']);
+    throw LogtoAuthException(
+        LogtoAuthExceptions.callbackUriValidationError, queryParams['error']!, queryParams['error_description']);
   }
 
   if (queryParams['state'] == null) {
-    throw LogtoAuthException(
-        LogtoAuthExceptions.callbackUriValidationError, 'missing state');
+    throw LogtoAuthException(LogtoAuthExceptions.callbackUriValidationError, 'missing state');
   }
 
   if (queryParams['state'] != state) {
-    throw LogtoAuthException(
-        LogtoAuthExceptions.callbackUriValidationError, 'invalid state');
+    throw LogtoAuthException(LogtoAuthExceptions.callbackUriValidationError, 'invalid state');
   }
 
   if (queryParams['code'] == null) {
-    throw LogtoAuthException(
-        LogtoAuthExceptions.callbackUriValidationError, 'missing code');
+    throw LogtoAuthException(LogtoAuthExceptions.callbackUriValidationError, 'missing code');
   }
 
   return queryParams['code']!;

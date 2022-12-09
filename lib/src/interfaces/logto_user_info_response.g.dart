@@ -18,6 +18,7 @@ LogtoUserInfoResponse _$LogtoUserInfoResponseFromJson(
     username: json['username'] as String?,
     name: json['name'] as String?,
     avatar: json['avatar'] as String?,
+    customData: json['custom_data'] as Map<String, dynamic>?,
     roleNames: (json['role_names'] as List<dynamic>?)
         ?.map((e) => e as String)
         .toList(),
@@ -32,4 +33,5 @@ Map<String, dynamic> _$LogtoUserInfoResponseToJson(
       'name': instance.name,
       'avatar': instance.avatar,
       'role_names': instance.roleNames,
+      'custom_data': instance.customData,
     };
