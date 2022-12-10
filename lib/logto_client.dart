@@ -18,6 +18,7 @@ import '/src/utilities/constants.dart';
 import '/src/utilities/utils.dart' as utils;
 import 'logto_core.dart' as logto_core;
 import 'src/interfaces/logto_user_info_response.dart';
+export 'src/interfaces/logto_user_info_response.dart';
 export '/src/interfaces/logto_config.dart';
 
 enum LogtoClientState {
