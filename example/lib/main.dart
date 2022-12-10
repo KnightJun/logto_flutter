@@ -45,8 +45,8 @@ class _MyHomePageState extends State<MyHomePage> {
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
       appId: 'ez8bpDXRZesPVFQFNLCBf',
-      scopes: ['custom_data'],
-      endpoint: 'https://login.jpgupup.com',
+      scopes: ['custom_data', 'identities'],
+      endpoint: 'https://account2.pixcv.com',
       scheme: 'io.logto',
       schemeDescription: 'logtoExample');
 
