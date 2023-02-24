@@ -41,12 +41,6 @@ class LogtoClient {
 
   static late TokenStorage _tokenStorage;
 
-  /// Logto automatically enables refresh token's rotation
-  ///
-  /// Simultaneous access token request may be problematic
-  /// Use a request cache map to avoid the race condition
-  static final Map<String, Future<AccessToken?>> _accessTokenRequestCache = {};
-
   static Future<String> Function({
     required String url,
     required String callbackUrlScheme,
@@ -141,21 +135,7 @@ class LogtoClient {
       return accessToken;
     }
 
-    // If no valid access token is found in storage, use refresh token to claim a new one
-    final cacheKey = TokenStorage.buildAccessTokenKey(resource);
-
-    // Reuse the cached request if is exist
-    if (_accessTokenRequestCache[cacheKey] != null) {
-      return _accessTokenRequestCache[cacheKey];
-    }
-
-    // Create new token request and add it to cache
-    final newTokenRequest = _getAccessTokenByRefreshToken(resource);
-    _accessTokenRequestCache[cacheKey] = newTokenRequest;
-
-    final token = await newTokenRequest;
-    // Clear the cache after response
-    _accessTokenRequestCache.remove(cacheKey);
+    final token = await _getAccessTokenByRefreshToken(resource);
 
     return token;
   }
@@ -178,9 +158,7 @@ class LogtoClient {
           tokenEndPoint: oidcConfig.tokenEndpoint,
           clientId: config.appId,
           refreshToken: refreshToken,
-          resource: resource,
-          // RBAC are not supported currently, no resource specific scopes are needed
-          scopes: resource != null ? ['offline_access'] : null);
+          resource: resource);
 
       final scopes = response.scope.split(' ');
 
