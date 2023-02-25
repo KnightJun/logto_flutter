@@ -84,7 +84,13 @@ Future<LogtoUserInfoResponse> fetchUserInfo(
     required String accessToken,
     List<String>? scopes}) async {
   Set<String> defalutScopes = {"openid", "profile"};
-  if(scopes!=null)defalutScopes.addAll(scopes);
+  if (scopes != null) {
+    for (final scope in scopes) {
+      if (!scope.contains(":")) {
+        defalutScopes.add(scope);
+      }
+    }
+  }
   final response = await httpClient.post(Uri.parse(userInfoEndpoint),
       headers: {'Authorization': 'Bearer $accessToken'}, body: {'scope': defalutScopes.join(' ')});
 
