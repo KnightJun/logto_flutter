@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:http/http.dart' as http;
 
+const serverDomain = "deepview.art";
+const apiIndicator = "https://api.$serverDomain";
+const apiEndpoint = "https://dev-api.$serverDomain";
+const logtoEndpoint = 'https://dev-accounts.$serverDomain';
+const logtoAppid = "IkxYTPkt7chFEGshpJ8eB";
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
@@ -44,9 +49,9 @@ class _MyHomePageState extends State<MyHomePage> {
 
   final redirectUri = 'io.logto://callback';
   final config = const LogtoConfig(
-      appId: 'ez8bpDXRZesPVFQFNLCBf',
+      appId: logtoAppid,
       scopes: ['custom_data', 'identities'],
-      endpoint: 'https://account2.pixcv.com',
+      endpoint: logtoEndpoint,
       scheme: 'io.logto',
       schemeDescription: 'logtoExample');
 
