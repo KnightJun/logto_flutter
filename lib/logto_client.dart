@@ -246,6 +246,7 @@ class LogtoClient {
       final urlParse = Uri.parse(redirectUri);
       final redirectUriScheme = urlParse.scheme;
       changeState(LogtoClientState.waitingUserLogin);
+      print(signInUri);
       callbackUri = await FlutterWebAuthAuthenticate!(
         url: signInUri.toString(),
         callbackUrlScheme: redirectUriScheme,
