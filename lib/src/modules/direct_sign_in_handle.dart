@@ -2,12 +2,19 @@ import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:logto_dart_sdk/src/utilities/utils.dart';
+import 'dart:math';
+
+String _generateRandomString() {
+  const chars = "abcdefghijklmnopqrstuvwxyz";
+  final random = Random();
+  return String.fromCharCodes(Iterable.generate(8, (_) => chars.codeUnitAt(random.nextInt(chars.length))));
+}
 
 class _SignInInfo {
   final String termsOfUseUrl;
   final String privacyPolicyUrl;
   final List<String> socialSignInConnectorTargets;
-  final List<SocialConnector> socialConnectors;
+  final List<_SocialConnector> socialConnectors;
 
   _SignInInfo({
     required this.termsOfUseUrl,
@@ -16,7 +23,7 @@ class _SignInInfo {
     required this.socialConnectors,
   });
 
-  SocialConnector findSocialConnector(String connectorName) {
+  _SocialConnector findSocialConnector(String connectorName) {
     return socialConnectors.firstWhere(
       (element) => element.target == connectorName,
       orElse: () {
@@ -27,7 +34,7 @@ class _SignInInfo {
 
   factory _SignInInfo.fromJson(Map<String, dynamic> json) {
     var socialConnectorsList = json['socialConnectors'] as List;
-    List<SocialConnector> connectors = socialConnectorsList.map((i) => SocialConnector.fromJson(i)).toList();
+    List<_SocialConnector> connectors = socialConnectorsList.map((i) => _SocialConnector.fromJson(i)).toList();
 
     return _SignInInfo(
       termsOfUseUrl: json['termsOfUseUrl'],
@@ -38,19 +45,19 @@ class _SignInInfo {
   }
 }
 
-class SocialConnector {
+class _SocialConnector {
   final String id;
   final String target;
   final String platform;
 
-  SocialConnector({
+  _SocialConnector({
     required this.id,
     required this.target,
     required this.platform,
   });
 
-  factory SocialConnector.fromJson(Map<String, dynamic> json) {
-    return SocialConnector(
+  factory _SocialConnector.fromJson(Map<String, dynamic> json) {
+    return _SocialConnector(
       id: json['id'],
       target: json['target'],
       platform: json['platform'],
@@ -58,7 +65,7 @@ class SocialConnector {
   }
 }
 
-String replaceQueryParam(String urlStr, String paramName, String newValue) {
+String _replaceQueryParam(String urlStr, String paramName, String newValue) {
   // 解析 URL
   var uri = Uri.parse(urlStr);
   // 构建新的查询参数字符串
@@ -74,41 +81,8 @@ String replaceQueryParam(String urlStr, String paramName, String newValue) {
   return newUrl;
 }
 
-String replaceUrlWithNewUrlAndKeepQueryParams(String oldUrl, String newUrl) {
-  // Extract the query parameters from the old URL
-  String queryParams = Uri.parse(oldUrl).query;
-  // Replace the URL with the new URL
-  // Combine the new URL and the query parameters to form the final URL
-  String finalUrl = Uri.parse(newUrl).replace(query: queryParams).toString();
-  return finalUrl;
-}
-
-Future<String> getCookieValue(CookieJar cookieJar, String url, String cookieName) async {
-  final cookies = await cookieJar.loadForRequest(Uri.parse(url));
-  for (final cookie in cookies) {
-    if (cookie.name == cookieName) {
-      return cookie.value;
-    }
-  }
-  throw "can't find cookie $cookieName";
-}
-
-Future<void> printCookieValue(CookieJar cookieJar, String url) async {
-  final cookies = await cookieJar.loadForRequest(Uri.parse(url));
-  for (final cookie in cookies) {
-    print("${cookie.name}:${cookie.value}");
-  }
-}
-
-String getHeader(Response response, String headerName) {
-  if (response.headers.map.containsKey(headerName)) {
-    return response.headers.map[headerName]!.first;
-  }
-  throw "can't find header $headerName";
-}
-
 Future<String> directSignInAuthenticate(
-    {required String connector,
+    {required DirectSignInConfig directSignInConfig,
     required String url,
     required String callbackUrlScheme,
     required bool preferEphemeral,
@@ -116,70 +90,65 @@ Future<String> directSignInAuthenticate(
   CookieJar cookieJar = CookieJar();
   final dio = Dio();
   dio.options.followRedirects = false;
+  dio.options.baseUrl = Uri.parse(url).origin;
   dio.interceptors.add(CookieManager(cookieJar));
-  try {
-    await dio.get(url);
-  } on DioError catch (e) {
-    if (!(e.response != null && e.response!.statusCode == 303)) {
-      rethrow;
+  Future<String> get302Address(String targetUrl) async {
+    try {
+      await dio.get(targetUrl);
+    } on DioError catch (e) {
+      if (!(e.response != null && e.response!.statusCode == 303)) {
+        rethrow;
+      }
+      if (e.response!.headers.map.containsKey("location")) {
+        return e.response!.headers.map["location"]!.first;
+      }
     }
+    throw "can't find header location";
   }
-  Response response = await dio.get("${Uri.parse(url).origin}/api/.well-known/sign-in-exp");
+
+  Future<Map<String, String?>> callGoogleVerify(String srcRedirectUri, String customRedirectUri) async {
+    final redirectUri = _replaceQueryParam(srcRedirectUri, "redirect_uri", customRedirectUri);
+    final googleBack = await webAuthAuthenticate(
+        callbackUrlScheme: callbackUrlScheme, preferEphemeral: preferEphemeral, url: redirectUri);
+    final googleBackUri = Uri.parse(googleBack);
+    return {
+      "redirectUri": customRedirectUri,
+      "code": googleBackUri.queryParameters["code"],
+      "scope": googleBackUri.queryParameters["scope"],
+      "authuser": googleBackUri.queryParameters["authuser"],
+      "prompt": googleBackUri.queryParameters["prompt"]
+    };
+  }
+
+  await get302Address(url);
+  Response response = await dio.get("/api/.well-known/sign-in-exp");
   final signInInfo = _SignInInfo.fromJson(response.data);
-  final connectorInfo = signInInfo.findSocialConnector(connector);
-  response = await dio.put("${Uri.parse(url).origin}/api/interaction", data: {"event": "SignIn"});
-  response = await dio.post("${Uri.parse(url).origin}/api/interaction/verification/social-authorization-uri", data: {
+  final connectorInfo = signInInfo.findSocialConnector(directSignInConfig.connector.name);
+  final connectorRedirectUrl = "${Uri.parse(url).origin}/callback/${connectorInfo.id}";
+  final customRedirectUri = directSignInConfig.customRedirectUri ?? connectorRedirectUrl;
+  response = await dio.put("/api/interaction", data: {"event": "SignIn"});
+  response = await dio.post("/api/interaction/verification/social-authorization-uri", data: {
     "connectorId": connectorInfo.id,
-    "state": "pixcv_sUnfmzGElu0",
-    "redirectUri": "${Uri.parse(url).origin}/callback/${connectorInfo.id}"
+    "state": "pixcv_${_generateRandomString()}",
+    "redirectUri": connectorRedirectUrl
   });
-  final redirectUri = replaceQueryParam(
-      response.data["redirectTo"], "redirect_uri", "https://dev-api.deepview.art/public/google/logincallback");
-
-  final googleBack = await webAuthAuthenticate(
-      callbackUrlScheme: callbackUrlScheme, preferEphemeral: preferEphemeral, url: redirectUri);
-  final googleBackUri = Uri.parse(googleBack);
-
-  final logtoCbUrl =
-      replaceUrlWithNewUrlAndKeepQueryParams(googleBack, "${Uri.parse(url).origin}/callback/${connectorInfo.id}");
-  await dio.get(logtoCbUrl);
-  var interactionId = await getCookieValue(cookieJar, url, "_interaction");
-  print("interactionId: $interactionId");
-  try {
-    response = await dio.patch("${Uri.parse(url).origin}/api/interaction/identifiers", data: {
-      "connectorData": {
-        "redirectUri": "https://dev-api.deepview.art/public/google/logincallback",
-        "code": googleBackUri.queryParameters["code"],
-        "scope":
-            "email profile https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email openid",
-        "authuser": "0",
-        "prompt": "none"
-      },
-      "connectorId": connectorInfo.id
-    });
-    response = await dio.post("${Uri.parse(url).origin}/api/interaction/submit");
-    response = await dio.get(response.data["redirectTo"]);
-  } on DioError catch (e) {
-    if (!(e.response != null && e.response!.statusCode == 303)) {
-      rethrow;
-    }
+  Map<String, String?> connectorData;
+  switch (directSignInConfig.connector) {
+    case SignInConnector.google:
+      connectorData = await callGoogleVerify(response.data["redirectTo"], customRedirectUri);
+      break;
+    case SignInConnector.wechat:
+      connectorData = await directSignInConfig.onWechatCallback!(response.data["redirectTo"]);
+      break;
+    default:
+      throw "unsupport connector ${directSignInConfig.connector.name}";
   }
-  await printCookieValue(cookieJar, url);
-  response = await dio.get("${Uri.parse(url).origin}/sign-in/consent");
-
-  response = await dio.post("${Uri.parse(url).origin}/api/interaction/consent");
-  interactionId = await getCookieValue(cookieJar, url, "_interaction");
-  print("interactionId: $interactionId");
-  late final String callbackUrl;
-  try {
-    response = await dio.get("${Uri.parse(url).origin}/oidc/auth/$interactionId");
-  } on DioError catch (e) {
-    if (!(e.response != null && e.response!.statusCode == 303)) {
-      rethrow;
-    }
-    callbackUrl = getHeader(e.response!, "location");
-  }
-
+  response = await dio
+      .patch("/api/interaction/identifiers", data: {"connectorData": connectorData, "connectorId": connectorInfo.id});
+  response = await dio.post("/api/interaction/submit");
+  await get302Address(response.data["redirectTo"]);
+  response = await dio.post("/api/interaction/consent");
+  final String callbackUrl = await get302Address(response.data["redirectTo"]);
   print(callbackUrl);
   return callbackUrl;
 }

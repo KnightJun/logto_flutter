@@ -12,19 +12,24 @@ typedef AuthenticateFunction = Future<String> Function({
   // ignore: non_constant_identifier_names
 });
 
-enum SignInConnector {
-  wechat,
-  google
+enum SignInConnector { wechat, google }
+
+typedef CustomConnectorHandle = Future<Map<String, String?>> Function(String url);
+
+class DirectSignInConfig {
+  final SignInConnector connector;
+  final String? customRedirectUri;
+  final CustomConnectorHandle? onWechatCallback;
+  DirectSignInConfig({required this.connector, this.customRedirectUri, this.onWechatCallback});
 }
 
-Uri addQueryParameters(Uri url, Map<String, dynamic> parameters) => url.replace(
-    queryParameters: Map.from(url.queryParameters)..addAll(parameters));
+Uri addQueryParameters(Uri url, Map<String, dynamic> parameters) =>
+    url.replace(queryParameters: Map.from(url.queryParameters)..addAll(parameters));
 
 String generateRandomString([int length = 64]) {
   Random random = Random.secure();
 
-  return base64UrlEncode(List.generate(length, (_) => random.nextInt(256)))
-      .split('=')[0];
+  return base64UrlEncode(List.generate(length, (_) => random.nextInt(256))).split('=')[0];
 }
 
 List<String> withReservedScopes(List<String> scopes) {

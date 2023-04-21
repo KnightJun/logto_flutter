@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 const serverDomain = "deepview.art";
 const apiIndicator = "https://api.$serverDomain";
@@ -98,7 +99,18 @@ class _MyHomePageState extends State<MyHomePage> {
       onPressed: () async {
         await logtoClient.signIn(
           redirectUri,
-          directSignInType: SignInConnector.google,
+          directSignInConfig: DirectSignInConfig(
+            connector: SignInConnector.wechat,
+            customRedirectUri: "https://dev-api.deepview.art/public/logincallback",
+            onWechatCallback: (url) async {
+              final uri = Uri.parse("wechat://");
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+              print(url);
+              return {};
+            },
+          ),
           getUserInfoCB: (userInfo) {
             print(userInfo.toJson());
           },

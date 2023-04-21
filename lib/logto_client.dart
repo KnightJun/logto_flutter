@@ -23,6 +23,7 @@ import 'src/interfaces/logto_user_info_response.dart';
 export 'src/interfaces/logto_user_info_response.dart';
 export '/src/interfaces/logto_config.dart';
 export '/src/utilities/utils.dart';
+
 enum LogtoClientState {
   unlogin,
   prepareLogin,
@@ -33,6 +34,7 @@ enum LogtoClientState {
   prepareLogout,
   waitingLogout,
 }
+
 // Logto SDK
 class LogtoClient {
   final LogtoConfig config;
@@ -192,7 +194,9 @@ class LogtoClient {
   }
 
   Future<void> signIn(String redirectUri,
-      {SignInConnector? directSignInType, void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
+      {DirectSignInConfig? directSignInConfig,
+      String? customRedirectUri,
+      void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
     if (_loading) {
       throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
@@ -221,14 +225,13 @@ class LogtoClient {
       final urlParse = Uri.parse(redirectUri);
       final redirectUriScheme = urlParse.scheme;
       changeState(LogtoClientState.waitingUserLogin);
-      if (directSignInType != null) {
+      if (directSignInConfig != null) {
         callbackUri = await directSignInAuthenticate(
-          connector: directSignInType.name,
-          url: signInUri.toString(),
-          callbackUrlScheme: redirectUriScheme,
-          preferEphemeral: true,
-          webAuthAuthenticate: flutterWebAuthAuthenticate!
-        );
+            directSignInConfig: directSignInConfig,
+            url: signInUri.toString(),
+            callbackUrlScheme: redirectUriScheme,
+            preferEphemeral: true,
+            webAuthAuthenticate: flutterWebAuthAuthenticate!);
       } else {
         callbackUri = await flutterWebAuthAuthenticate!(
           url: signInUri.toString(),
