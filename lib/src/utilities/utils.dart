@@ -5,6 +5,18 @@ import 'package:path/path.dart' as p;
 
 import 'constants.dart';
 
+typedef AuthenticateFunction = Future<String> Function({
+  required String url,
+  required String callbackUrlScheme,
+  required bool preferEphemeral,
+  // ignore: non_constant_identifier_names
+});
+
+enum SignInConnector {
+  wechat,
+  google
+}
+
 Uri addQueryParameters(Uri url, Map<String, dynamic> parameters) => url.replace(
     queryParameters: Map.from(url.queryParameters)..addAll(parameters));
 

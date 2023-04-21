@@ -7,6 +7,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 import 'package:jose/jose.dart';
 import 'package:logto_dart_sdk/flutter_web_auth_windows.dart';
+import 'package:logto_dart_sdk/src/modules/direct_sign_in_handle.dart';
+import 'package:logto_dart_sdk/src/utilities/utils.dart';
 
 import '/src/exceptions/logto_auth_exceptions.dart';
 import '/src/interfaces/logto_interfaces.dart';
@@ -20,7 +22,7 @@ import 'logto_core.dart' as logto_core;
 import 'src/interfaces/logto_user_info_response.dart';
 export 'src/interfaces/logto_user_info_response.dart';
 export '/src/interfaces/logto_config.dart';
-
+export '/src/utilities/utils.dart';
 enum LogtoClientState {
   unlogin,
   prepareLogin,
@@ -31,7 +33,6 @@ enum LogtoClientState {
   prepareLogout,
   waitingLogout,
 }
-
 // Logto SDK
 class LogtoClient {
   final LogtoConfig config;
@@ -41,12 +42,7 @@ class LogtoClient {
 
   static late TokenStorage _tokenStorage;
 
-  static Future<String> Function({
-    required String url,
-    required String callbackUrlScheme,
-    required bool preferEphemeral,
-    // ignore: non_constant_identifier_names
-  })? FlutterWebAuthAuthenticate;
+  static AuthenticateFunction? flutterWebAuthAuthenticate;
 
   /// Custom [http.Client].
   ///
@@ -72,12 +68,12 @@ class LogtoClient {
     _httpClient = httpClient;
     _storage = storageProvider ?? SecureStorageStrategy();
     _tokenStorage = TokenStorage(_storage);
-    if (FlutterWebAuthAuthenticate == null) {
+    if (flutterWebAuthAuthenticate == null) {
       if (Platform.isWindows) {
-        FlutterWebAuthAuthenticate = FlutterWebAuthWindows.authenticate;
+        flutterWebAuthAuthenticate = FlutterWebAuthWindows.authenticate;
         FlutterWebAuthWindows.registerScheme(config.scheme, config.schemeDescription);
       } else {
-        FlutterWebAuthAuthenticate = FlutterWebAuth.authenticate;
+        flutterWebAuthAuthenticate = FlutterWebAuth.authenticate;
       }
     }
   }
@@ -195,7 +191,8 @@ class LogtoClient {
     }
   }
 
-  Future<void> signIn(String redirectUri, {void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
+  Future<void> signIn(String redirectUri,
+      {SignInConnector? directSignInType, void Function(LogtoUserInfoResponse userInfo)? getUserInfoCB}) async {
     if (_loading) {
       throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
@@ -224,12 +221,21 @@ class LogtoClient {
       final urlParse = Uri.parse(redirectUri);
       final redirectUriScheme = urlParse.scheme;
       changeState(LogtoClientState.waitingUserLogin);
-      print(signInUri);
-      callbackUri = await FlutterWebAuthAuthenticate!(
-        url: signInUri.toString(),
-        callbackUrlScheme: redirectUriScheme,
-        preferEphemeral: true,
-      );
+      if (directSignInType != null) {
+        callbackUri = await directSignInAuthenticate(
+          connector: directSignInType.name,
+          url: signInUri.toString(),
+          callbackUrlScheme: redirectUriScheme,
+          preferEphemeral: true,
+          webAuthAuthenticate: flutterWebAuthAuthenticate!
+        );
+      } else {
+        callbackUri = await flutterWebAuthAuthenticate!(
+          url: signInUri.toString(),
+          callbackUrlScheme: redirectUriScheme,
+          preferEphemeral: true,
+        );
+      }
       changeState(LogtoClientState.authorization);
       await _handleSignInCallback(callbackUri, redirectUri, httpClient);
       if (getUserInfoCB != null) {
@@ -317,7 +323,7 @@ class LogtoClient {
             final urlParse = Uri.parse(redirectUri);
             final redirectUriScheme = urlParse.scheme;
             try {
-              FlutterWebAuthAuthenticate!(
+              flutterWebAuthAuthenticate!(
                 url: signInUri.toString(),
                 callbackUrlScheme: redirectUriScheme,
                 preferEphemeral: true,

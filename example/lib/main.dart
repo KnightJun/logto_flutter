@@ -98,6 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
       onPressed: () async {
         await logtoClient.signIn(
           redirectUri,
+          directSignInType: SignInConnector.google,
           getUserInfoCB: (userInfo) {
             print(userInfo.toJson());
           },
