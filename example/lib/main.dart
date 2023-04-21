@@ -47,12 +47,12 @@ class _MyHomePageState extends State<MyHomePage> {
   static String welcome = 'Logto SDK Demo Home Page';
   String? content;
 
-  final redirectUri = 'io.logto://callback';
+  final redirectUri = 'pixcv.login://callback';
   final config = const LogtoConfig(
       appId: logtoAppid,
       scopes: ['custom_data', 'identities'],
       endpoint: logtoEndpoint,
-      scheme: 'io.logto',
+      scheme: 'pixcv.login',
       schemeDescription: 'logtoExample');
 
   late LogtoClient logtoClient;
