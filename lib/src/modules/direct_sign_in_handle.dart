@@ -97,7 +97,7 @@ Future<String> directSignInAuthenticate(
     try {
       await dio.get(targetUrl);
     } on DioError catch (e) {
-      if (!(e.response != null && e.response!.statusCode == 303)) {
+      if (e.response == null || (e.response!.statusCode != 302 && e.response!.statusCode != 303)) {
         rethrow;
       }
       if (e.response!.headers.map.containsKey("location")) {
@@ -151,10 +151,19 @@ Future<String> directSignInAuthenticate(
   }
   response = await dio.patch("/api/interaction/identifiers",
       data: {"connectorData": connectorData.data, "connectorId": connectorInfo.id});
-  response = await dio.post("/api/interaction/submit");
+  try {
+    response = await dio.post("/api/interaction/submit");
+  } on DioError catch (e) {
+    if (e.response == null || e.response!.statusCode != 422 || e.response!.data["code"] != "user.identity_not_exist") {
+      rethrow;
+    }
+    // 自动注册
+    response = await dio.put("/api/interaction/event", data: {"event": "Register"});
+    response = await dio.patch("/api/interaction/profile", data: {"connectorId": connectorInfo.id});
+    response = await dio.post("/api/interaction/submit");
+  }
   await get302Address(response.data["redirectTo"]);
   response = await dio.post("/api/interaction/consent");
   final String callbackUrl = await get302Address(response.data["redirectTo"]);
-  print(callbackUrl);
   return callbackUrl;
 }
