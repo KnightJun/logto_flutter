@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:fluwx/fluwx.dart';
 import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
@@ -73,6 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _init() async {
+    registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
     logtoClient = LogtoClient(
       config: config,
       httpClient: http.Client(),
@@ -100,16 +102,8 @@ class _MyHomePageState extends State<MyHomePage> {
         await logtoClient.signIn(
           redirectUri,
           directSignInConfig: DirectSignInConfig(
-            connector: SignInConnector.wechat,
+            connector: SignInConnector.google,
             customRedirectUri: "https://dev-api.deepview.art/public/logincallback",
-            onWechatCallback: (url) async {
-              final uri = Uri.parse("wechat://");
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri);
-              }
-              print(url);
-              return {};
-            },
           ),
           getUserInfoCB: (userInfo) {
             print(userInfo.toJson());

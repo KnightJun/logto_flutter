@@ -5,6 +5,22 @@ import 'package:path/path.dart' as p;
 
 import 'constants.dart';
 
+enum LogtoClientState {
+  unlogin,
+  prepareLogin,
+  waitingUserLogin,
+  authorization,
+  gettingUserInfo,
+  loginFinish,
+  prepareLogout,
+  waitingLogout,
+  waitingConnector,
+  connectorAgree,
+  connectorDecline,
+  connectorCancel,
+  connectorError
+}
+
 typedef AuthenticateFunction = Future<String> Function({
   required String url,
   required String callbackUrlScheme,
@@ -14,7 +30,15 @@ typedef AuthenticateFunction = Future<String> Function({
 
 enum SignInConnector { wechat, google }
 
-typedef CustomConnectorHandle = Future<Map<String, String?>> Function(String url);
+class ConnectorResult {
+  final LogtoClientState state;
+  final Map<String, String?>? data;
+  final String? callbackUrl;
+
+  ConnectorResult({required this.state, this.data, this.callbackUrl});
+}
+
+typedef CustomConnectorHandle = Future<ConnectorResult> Function(String url);
 
 class DirectSignInConfig {
   final SignInConnector connector;

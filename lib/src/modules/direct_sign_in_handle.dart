@@ -83,6 +83,7 @@ String _replaceQueryParam(String urlStr, String paramName, String newValue) {
 
 Future<String> directSignInAuthenticate(
     {required DirectSignInConfig directSignInConfig,
+    required void Function(LogtoClientState state) changeState,
     required String url,
     required String callbackUrlScheme,
     required bool preferEphemeral,
@@ -106,18 +107,18 @@ Future<String> directSignInAuthenticate(
     throw "can't find header location";
   }
 
-  Future<Map<String, String?>> callGoogleVerify(String srcRedirectUri, String customRedirectUri) async {
+  Future<ConnectorResult> callGoogleVerify(String srcRedirectUri, String customRedirectUri) async {
     final redirectUri = _replaceQueryParam(srcRedirectUri, "redirect_uri", customRedirectUri);
     final googleBack = await webAuthAuthenticate(
         callbackUrlScheme: callbackUrlScheme, preferEphemeral: preferEphemeral, url: redirectUri);
     final googleBackUri = Uri.parse(googleBack);
-    return {
+    return ConnectorResult(state: LogtoClientState.connectorAgree, data: {
       "redirectUri": customRedirectUri,
       "code": googleBackUri.queryParameters["code"],
       "scope": googleBackUri.queryParameters["scope"],
       "authuser": googleBackUri.queryParameters["authuser"],
       "prompt": googleBackUri.queryParameters["prompt"]
-    };
+    });
   }
 
   await get302Address(url);
@@ -132,7 +133,8 @@ Future<String> directSignInAuthenticate(
     "state": "pixcv_${_generateRandomString()}",
     "redirectUri": connectorRedirectUrl
   });
-  Map<String, String?> connectorData;
+  changeState(LogtoClientState.waitingUserLogin);
+  ConnectorResult connectorData;
   switch (directSignInConfig.connector) {
     case SignInConnector.google:
       connectorData = await callGoogleVerify(response.data["redirectTo"], customRedirectUri);
@@ -143,8 +145,12 @@ Future<String> directSignInAuthenticate(
     default:
       throw "unsupport connector ${directSignInConfig.connector.name}";
   }
-  response = await dio
-      .patch("/api/interaction/identifiers", data: {"connectorData": connectorData, "connectorId": connectorInfo.id});
+  changeState(connectorData.state);
+  if (connectorData.state != LogtoClientState.connectorAgree) {
+    return "";
+  }
+  response = await dio.patch("/api/interaction/identifiers",
+      data: {"connectorData": connectorData.data, "connectorId": connectorInfo.id});
   response = await dio.post("/api/interaction/submit");
   await get302Address(response.data["redirectTo"]);
   response = await dio.post("/api/interaction/consent");

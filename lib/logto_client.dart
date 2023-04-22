@@ -24,17 +24,6 @@ export 'src/interfaces/logto_user_info_response.dart';
 export '/src/interfaces/logto_config.dart';
 export '/src/utilities/utils.dart';
 
-enum LogtoClientState {
-  unlogin,
-  prepareLogin,
-  waitingUserLogin,
-  authorization,
-  gettingUserInfo,
-  loginFinish,
-  prepareLogout,
-  waitingLogout,
-}
-
 // Logto SDK
 class LogtoClient {
   final LogtoConfig config;
@@ -224,15 +213,19 @@ class LogtoClient {
       String? callbackUri;
       final urlParse = Uri.parse(redirectUri);
       final redirectUriScheme = urlParse.scheme;
-      changeState(LogtoClientState.waitingUserLogin);
       if (directSignInConfig != null) {
         callbackUri = await directSignInAuthenticate(
             directSignInConfig: directSignInConfig,
+            changeState: changeState,
             url: signInUri.toString(),
             callbackUrlScheme: redirectUriScheme,
             preferEphemeral: true,
             webAuthAuthenticate: flutterWebAuthAuthenticate!);
+        if (loginState != LogtoClientState.connectorAgree) {
+          return;
+        }
       } else {
+        changeState(LogtoClientState.waitingUserLogin);
         callbackUri = await flutterWebAuthAuthenticate!(
           url: signInUri.toString(),
           callbackUrlScheme: redirectUriScheme,
