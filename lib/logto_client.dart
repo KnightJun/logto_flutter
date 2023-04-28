@@ -67,6 +67,7 @@ class LogtoClient {
         flutterWebAuthAuthenticate = FlutterWebAuth.authenticate;
       }
     }
+    directSignInWarmUp(config.endpoint);
   }
 
   Future<void> cleanResources() async {

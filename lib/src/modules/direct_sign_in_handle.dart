@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
@@ -81,6 +83,23 @@ String _replaceQueryParam(String urlStr, String paramName, String newValue) {
   return newUrl;
 }
 
+_SignInInfo? _signInInfo;
+Completer<void>? _signInInfoCompleter;
+Future<void> directSignInWarmUp(String baseUrl) async {
+  final dio = Dio();
+  dio.options.baseUrl = baseUrl;
+  _signInInfoCompleter = Completer<void>();
+  try {
+    Response response = await dio.get("/api/.well-known/sign-in-exp");
+    _signInInfo = _SignInInfo.fromJson(response.data);
+    _signInInfoCompleter!.complete();
+    print("directSignInWarmUp");
+  } catch (e) {
+    _signInInfoCompleter!.completeError(e);
+    _signInInfoCompleter = null;
+  }
+}
+
 Future<String> directSignInAuthenticate(
     {required DirectSignInConfig directSignInConfig,
     required void Function(LogtoClientState state) changeState,
@@ -122,8 +141,12 @@ Future<String> directSignInAuthenticate(
   }
 
   await get302Address(url);
-  Response response = await dio.get("/api/.well-known/sign-in-exp");
-  final signInInfo = _SignInInfo.fromJson(response.data);
+  Response response;
+  late final _SignInInfo signInInfo;
+  if (_signInInfoCompleter != null) {
+    await _signInInfoCompleter!.future;
+  }
+  signInInfo = _signInInfo ?? _SignInInfo.fromJson((await dio.get("/api/.well-known/sign-in-exp")).data);
   final connectorInfo = signInInfo.findSocialConnector(directSignInConfig.connector.name);
   final connectorRedirectUrl = "${Uri.parse(url).origin}/callback/${connectorInfo.id}";
   final customRedirectUri = directSignInConfig.customRedirectUri ?? connectorRedirectUrl;

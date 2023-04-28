@@ -74,7 +74,9 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _init() async {
-    registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
+    if(Platform.isAndroid || Platform.isIOS){
+      registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
+    }
     logtoClient = LogtoClient(
       config: config,
       httpClient: http.Client(),
