@@ -93,7 +93,6 @@ Future<void> directSignInWarmUp(String baseUrl) async {
     Response response = await dio.get("/api/.well-known/sign-in-exp");
     _signInInfo = _SignInInfo.fromJson(response.data);
     _signInInfoCompleter!.complete();
-    print("directSignInWarmUp");
   } catch (e) {
     _signInInfoCompleter!.completeError(e);
     _signInInfoCompleter = null;
