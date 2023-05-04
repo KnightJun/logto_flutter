@@ -64,8 +64,9 @@ List<String> withReservedScopes(List<String> scopes) {
 }
 
 String appendUriPath(String endpoint, String path) {
-  var uri = Uri.parse(endpoint);
-  var jointUri = uri.replace(path: p.join(uri.path, path));
+  return endpoint + path;
+  // var uri = Uri.parse(endpoint);
+  // var jointUri = uri.replace(path: p.join(uri.path, path));
 
-  return jointUri.toString();
+  // return jointUri.toString();
 }

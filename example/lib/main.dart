@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 const serverDomain = "deepview.art";
 const apiIndicator = "https://api.$serverDomain";
 const apiEndpoint = "https://dev-api.$serverDomain";
-const logtoEndpoint = 'https://dev-accounts.$serverDomain';
+const logtoEndpoint = 'https://dev-api.viewdepth.cn/accounts';
 const logtoAppid = "IkxYTPkt7chFEGshpJ8eB";
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -74,9 +74,7 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   void _init() async {
-    if(Platform.isAndroid || Platform.isIOS){
-      registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
-    }
+    // registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
     logtoClient = LogtoClient(
       config: config,
       httpClient: http.Client(),
