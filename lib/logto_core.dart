@@ -16,8 +16,8 @@ Future<OidcProviderConfig> fetchOidcConfig(http.Client httpClient, String endpoi
   final response = await httpClient.get(Uri.parse(endpoint));
 
   var body = httpResponseHandler(response);
-
-  return OidcProviderConfig.fromJson(body);
+  final oidc = OidcProviderConfig.fromJson(body);
+  return oidc;
 }
 
 Future<LogtoCodeTokenResponse> fetchTokenByAuthorizationCode(

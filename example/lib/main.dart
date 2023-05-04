@@ -9,7 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 const serverDomain = "deepview.art";
 const apiIndicator = "https://api.$serverDomain";
 const apiEndpoint = "https://dev-api.$serverDomain";
-const logtoEndpoint = 'https://dev-api.viewdepth.cn/accounts';
+const logtoEndpoint = 'https://dev-accounts.viewdepth.cn';
 const logtoAppid = "IkxYTPkt7chFEGshpJ8eB";
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,7 +103,7 @@ class _MyHomePageState extends State<MyHomePage> {
           redirectUri,
           directSignInConfig: DirectSignInConfig(
             connector: SignInConnector.google,
-            customRedirectUri: "https://dev-api.deepview.art/public/logincallback",
+            customRedirectUri: "https://dev-accounts.viewdepth.cn/deepviewapi/public/logincallback",
           ),
           getUserInfoCB: (userInfo) {
             print(userInfo.toJson());
