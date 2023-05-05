@@ -37,7 +37,7 @@ class LogtoClient {
   /// Custom [dio.Dio].
   ///
   /// Note that you will have to call `close()` yourself when passing a [dio.Dio] instance.
-  late final dio.Dio? _httpClient;
+  late final dio.Dio _httpClient;
 
   bool _loading = false;
 
@@ -53,9 +53,10 @@ class LogtoClient {
   LogtoClient({
     required this.config,
     LogtoStorageStrategy? storageProvider,
-    dio.Dio? httpClient,
+    required dio.Dio httpClient,
   }) {
     _httpClient = httpClient;
+    httpClient.options.baseUrl = config.endpoint;
     _storage = storageProvider ?? SecureStorageStrategy();
     _tokenStorage = TokenStorage(_storage);
     if (flutterWebAuthAuthenticate == null) {
@@ -190,8 +191,7 @@ class LogtoClient {
       throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
 
-    final httpClient = _httpClient ?? dio.Dio();
-    httpClient.options.baseUrl = config.endpoint;
+    final httpClient = _httpClient;
 
     try {
       _loading = true;
@@ -216,7 +216,7 @@ class LogtoClient {
       final redirectUriScheme = urlParse.scheme;
       if (directSignInConfig != null) {
         callbackUri = await directSignInAuthenticate(
-            dio:httpClient,
+            dio: httpClient,
             directSignInConfig: directSignInConfig,
             changeState: changeState,
             url: signInUri.toString(),
@@ -290,8 +290,7 @@ class LogtoClient {
     // Throw error is authentication status not found
     final idToken = await _tokenStorage.idToken;
 
-    final httpClient = _httpClient ?? dio.Dio();
-    httpClient.options.baseUrl = config.endpoint;
+    final httpClient = _httpClient;
 
     if (idToken == null) {
       throw LogtoAuthException(LogtoAuthExceptions.authenticationError, 'not authenticated');
