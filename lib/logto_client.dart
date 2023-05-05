@@ -216,6 +216,7 @@ class LogtoClient {
       final redirectUriScheme = urlParse.scheme;
       if (directSignInConfig != null) {
         callbackUri = await directSignInAuthenticate(
+            logtoEndpoint: config.endpoint,
             directSignInConfig: directSignInConfig,
             changeState: changeState,
             url: signInUri.toString(),
