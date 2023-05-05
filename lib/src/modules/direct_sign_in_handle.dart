@@ -98,30 +98,19 @@ Future<void> directSignInWarmUp(String baseUrl) async {
     _signInInfoCompleter = null;
   }
 }
-String removeDomainFromUrl(String urlString) {
-  Uri url = Uri.parse(urlString);
-  return url.path + (url.query.isEmpty ? '' : '?${url.query}');
-}
 
 Future<String> directSignInAuthenticate(
     {required DirectSignInConfig directSignInConfig,
-    required String logtoEndpoint,
+    required Dio dio,
     required void Function(LogtoClientState state) changeState,
     required String url,
     required String callbackUrlScheme,
     required bool preferEphemeral,
     required AuthenticateFunction webAuthAuthenticate}) async {
   CookieJar cookieJar = CookieJar();
-  final dio = Dio();
-  dio.interceptors.add(InterceptorsWrapper(
-    onRequest: (options, handler) {
-      options.path = removeDomainFromUrl(options.path);
-      handler.next(options);
-    },
-  ));
-  dio.interceptors.add(CookieManager(cookieJar));
+  final cookieInterceptor = CookieManager(cookieJar);
+  dio.interceptors.add(cookieInterceptor);
   dio.options.followRedirects = false;
-  dio.options.baseUrl = logtoEndpoint;
   Future<String> get302Address(String targetUrl) async {
     try {
       await dio.get(targetUrl);
@@ -182,7 +171,7 @@ Future<String> directSignInAuthenticate(
   if (connectorData.state != LogtoClientState.connectorAgree) {
     return "";
   }
-  response = await dio.post("/api/interaction/identifiers",
+  response = await dio.patch("/api/interaction/identifiers",
       data: {"connectorData": connectorData.data, "connectorId": connectorInfo.id});
   try {
     response = await dio.post("/api/interaction/submit");
@@ -198,5 +187,6 @@ Future<String> directSignInAuthenticate(
   await get302Address(response.data["redirectTo"]);
   response = await dio.post("/api/interaction/consent");
   final String callbackUrl = await get302Address(response.data["redirectTo"]);
+  dio.interceptors.remove(cookieInterceptor);
   return callbackUrl;
 }

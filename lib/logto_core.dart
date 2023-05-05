@@ -1,4 +1,3 @@
-import 'package:http/http.dart' as http;
 import 'package:logto_dart_sdk/src/interfaces/logto_user_info_response.dart';
 
 import '/src/exceptions/logto_auth_exceptions.dart';
@@ -6,14 +5,15 @@ import '/src/interfaces/logto_interfaces.dart';
 import '/src/utilities/constants.dart';
 import '/src/utilities/http_utils.dart';
 import '/src/utilities/utils.dart';
+import 'package:dio/dio.dart' as dio;
 
 const String _codeChallengeMethod = 'S256';
 const String _responseType = 'code';
 const String _prompt = 'consent';
 const String _requestContentType = 'application/x-www-form-urlencoded';
 
-Future<OidcProviderConfig> fetchOidcConfig(http.Client httpClient, String endpoint) async {
-  final response = await httpClient.get(Uri.parse(endpoint));
+Future<OidcProviderConfig> fetchOidcConfig(dio.Dio httpClient, String endpoint) async {
+  final response = await httpClient.get(endpoint);
 
   var body = httpResponseHandler(response);
   final oidc = OidcProviderConfig.fromJson(body);
@@ -21,7 +21,7 @@ Future<OidcProviderConfig> fetchOidcConfig(http.Client httpClient, String endpoi
 }
 
 Future<LogtoCodeTokenResponse> fetchTokenByAuthorizationCode(
-    {required http.Client httpClient,
+    {required dio.Dio httpClient,
     required String tokenEndPoint,
     required String code,
     required String codeVerifier,
@@ -40,8 +40,8 @@ Future<LogtoCodeTokenResponse> fetchTokenByAuthorizationCode(
     payload.addAll({'resource': resource});
   }
 
-  final response =
-      await httpClient.post(Uri.parse(tokenEndPoint), headers: {'Content-Type': _requestContentType}, body: payload);
+  final response = await httpClient.post(tokenEndPoint,
+      options: dio.Options(headers: {'Content-Type': _requestContentType}), data: payload);
 
   var body = httpResponseHandler(response);
 
@@ -49,7 +49,7 @@ Future<LogtoCodeTokenResponse> fetchTokenByAuthorizationCode(
 }
 
 Future<LogtoRefreshTokenResponse> fetchTokenByRefreshToken({
-  required http.Client httpClient,
+  required dio.Dio httpClient,
   required String tokenEndPoint,
   required String clientId,
   required String refreshToken,
@@ -70,8 +70,8 @@ Future<LogtoRefreshTokenResponse> fetchTokenByRefreshToken({
     payload.addAll({'scope': scopes.join(' ')});
   }
 
-  final response =
-      await httpClient.post(Uri.parse(tokenEndPoint), headers: {'Content-Type': _requestContentType}, body: payload);
+  final response = await httpClient.post(tokenEndPoint,
+      options: dio.Options(headers: {'Content-Type': _requestContentType}), data: payload);
 
   var body = httpResponseHandler(response);
 
@@ -79,7 +79,7 @@ Future<LogtoRefreshTokenResponse> fetchTokenByRefreshToken({
 }
 
 Future<LogtoUserInfoResponse> fetchUserInfo(
-    {required http.Client httpClient,
+    {required dio.Dio httpClient,
     required String userInfoEndpoint,
     required String accessToken,
     List<String>? scopes}) async {
@@ -91,8 +91,11 @@ Future<LogtoUserInfoResponse> fetchUserInfo(
       }
     }
   }
-  final response = await httpClient.post(Uri.parse(userInfoEndpoint),
-      headers: {'Authorization': 'Bearer $accessToken'}, body: {'scope': defalutScopes.join(' ')});
+
+  final response = await httpClient.post(userInfoEndpoint,
+      options: dio.Options(
+          headers: {'Authorization': 'Bearer $accessToken'}, contentType: dio.Headers.formUrlEncodedContentType),
+      data: {'scope': defalutScopes.join(' ')});
 
   var body = httpResponseHandler(response);
 
@@ -100,13 +103,14 @@ Future<LogtoUserInfoResponse> fetchUserInfo(
 }
 
 Future<void> revoke({
-  required http.Client httpClient,
+  required dio.Dio httpClient,
   required String revocationEndpoint,
   required String clientId,
   required String token,
 }) =>
-    httpClient.post(Uri.parse(revocationEndpoint),
-        headers: {'Content-Type': _requestContentType}, body: {'client_id': clientId, 'token': token});
+    httpClient.post(revocationEndpoint,
+        options: dio.Options(headers: {'Content-Type': _requestContentType}),
+        data: {'client_id': clientId, 'token': token});
 
 Uri generateSignInUri(
     {required String authorizationEndpoint,

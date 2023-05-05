@@ -3,8 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
-import 'package:http/http.dart' as http;
-import 'package:http/http.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:jose/jose.dart';
 import 'package:logto_dart_sdk/flutter_web_auth_windows.dart';
 import 'package:logto_dart_sdk/src/modules/direct_sign_in_handle.dart';
@@ -35,10 +34,10 @@ class LogtoClient {
 
   static AuthenticateFunction? flutterWebAuthAuthenticate;
 
-  /// Custom [http.Client].
+  /// Custom [dio.Dio].
   ///
-  /// Note that you will have to call `close()` yourself when passing a [http.Client] instance.
-  late final http.Client? _httpClient;
+  /// Note that you will have to call `close()` yourself when passing a [dio.Dio] instance.
+  late final dio.Dio? _httpClient;
 
   bool _loading = false;
 
@@ -54,7 +53,7 @@ class LogtoClient {
   LogtoClient({
     required this.config,
     LogtoStorageStrategy? storageProvider,
-    http.Client? httpClient,
+    dio.Dio? httpClient,
   }) {
     _httpClient = httpClient;
     _storage = storageProvider ?? SecureStorageStrategy();
@@ -93,7 +92,7 @@ class LogtoClient {
     return token?.claims;
   }
 
-  Future<OidcProviderConfig> _getOidcConfig(http.Client httpClient) async {
+  Future<OidcProviderConfig> _getOidcConfig(dio.Dio httpClient) async {
     if (_oidcConfig != null) {
       return _oidcConfig!;
     }
@@ -104,7 +103,7 @@ class LogtoClient {
     return _oidcConfig!;
   }
 
-  Future<LogtoUserInfoResponse> fetchUserInfo(http.Client httpClient) async {
+  Future<LogtoUserInfoResponse> fetchUserInfo(dio.Dio httpClient) async {
     final userInfoEndpoint = utils.appendUriPath(config.endpoint, '/oidc/me');
     final accessToken = (await _tokenStorage.getAccessToken())!;
     final userInfo = await logto_core.fetchUserInfo(
@@ -136,7 +135,7 @@ class LogtoClient {
       throw LogtoAuthException(LogtoAuthExceptions.authenticationError, 'not_authenticated');
     }
 
-    final httpClient = _httpClient ?? http.Client();
+    final httpClient = _httpClient ?? dio.Dio();
 
     try {
       final oidcConfig = await _getOidcConfig(httpClient);
@@ -191,7 +190,8 @@ class LogtoClient {
       throw LogtoAuthException(LogtoAuthExceptions.isLoadingError, 'Already signing in...');
     }
 
-    final httpClient = _httpClient ?? http.Client();
+    final httpClient = _httpClient ?? dio.Dio();
+    httpClient.options.baseUrl = config.endpoint;
 
     try {
       _loading = true;
@@ -216,7 +216,7 @@ class LogtoClient {
       final redirectUriScheme = urlParse.scheme;
       if (directSignInConfig != null) {
         callbackUri = await directSignInAuthenticate(
-            logtoEndpoint: config.endpoint,
+            dio:httpClient,
             directSignInConfig: directSignInConfig,
             changeState: changeState,
             url: signInUri.toString(),
@@ -244,10 +244,10 @@ class LogtoClient {
     } on PlatformException {
       onUserCancelLogin?.call();
       changeState(LogtoClientState.unlogin);
-    } on ClientException {
+    } on HandshakeException {
       onNetworkError?.call();
       changeState(LogtoClientState.unlogin);
-    } on HandshakeException {
+    } on dio.DioError {
       onNetworkError?.call();
       changeState(LogtoClientState.unlogin);
     } finally {
@@ -257,7 +257,7 @@ class LogtoClient {
     return;
   }
 
-  Future _handleSignInCallback(String callbackUri, String redirectUri, http.Client httpClient) async {
+  Future _handleSignInCallback(String callbackUri, String redirectUri, dio.Dio httpClient) async {
     final code = logto_core.verifyAndParseCodeFromCallbackUri(
       callbackUri,
       redirectUri,
@@ -290,7 +290,8 @@ class LogtoClient {
     // Throw error is authentication status not found
     final idToken = await _tokenStorage.idToken;
 
-    final httpClient = _httpClient ?? http.Client();
+    final httpClient = _httpClient ?? dio.Dio();
+    httpClient.options.baseUrl = config.endpoint;
 
     if (idToken == null) {
       throw LogtoAuthException(LogtoAuthExceptions.authenticationError, 'not authenticated');

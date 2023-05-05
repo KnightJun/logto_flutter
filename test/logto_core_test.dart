@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:http/http.dart' as http;
 import 'package:nock/nock.dart';
+import 'package:dio/dio.dart' as dio;
 
 import 'package:logto_dart_sdk/logto_core.dart' as logto_core;
 import 'package:logto_dart_sdk/src/utilities/constants.dart';
@@ -76,7 +76,7 @@ void main() {
           headers: {'Content-Type': 'application/json'});
 
     var result = await logto_core.fetchOidcConfig(
-        http.Client(), '$logtoOrigin$endpoint');
+        dio.Dio(), '$logtoOrigin$endpoint');
 
     expect(interceptor.isDone, true);
     expect(result.issuer, mockOidcConfigResponse['issuer']);
@@ -102,7 +102,7 @@ void main() {
           headers: {'Content-Type': 'application/json'});
 
     var result = await logto_core.fetchTokenByAuthorizationCode(
-        httpClient: http.Client(),
+        httpClient: dio.Dio(),
         tokenEndPoint: '$logtoOrigin$endpoint',
         code: code,
         codeVerifier: codeVerifier,
@@ -128,7 +128,7 @@ void main() {
           headers: {'Content-Type': 'application/json'});
 
     var result = await logto_core.fetchTokenByRefreshToken(
-        httpClient: http.Client(),
+        httpClient: dio.Dio(),
         tokenEndPoint: '$logtoOrigin$endpoint',
         clientId: clientId,
         refreshToken: refreshToken);
@@ -147,7 +147,7 @@ void main() {
           headers: {'Content-Type': 'application/json'});
 
     var result = await logto_core.fetchUserInfo(
-      httpClient: http.Client(),
+      httpClient: dio.Dio(),
       userInfoEndpoint: '$logtoOrigin$endpoint',
       accessToken: accessToken,
     );

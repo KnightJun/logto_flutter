@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:fluwx/fluwx.dart';
+import 'package:dio/dio.dart' as dio;
 import 'package:logto_dart_sdk/logto_client.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 
 const serverDomain = "deepview.art";
@@ -15,7 +17,6 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
-
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
@@ -73,11 +74,26 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
+String removeDomainFromUrl(String urlString) {
+  Uri url = Uri.parse(urlString);
+  return url.path + (url.query.isEmpty ? '' : '?${url.query}');
+}
   void _init() async {
+    final dioClient = dio.Dio();
+    dioClient.interceptors.add(dio.InterceptorsWrapper(
+      onRequest: (options, handler) {
+        if('PATCH' == options.method){
+          options.method = "POST";
+        }
+        options.path = removeDomainFromUrl(options.path);
+        print("${options.method}:${options.uri}");
+        handler.next(options);
+      },
+    ));
     // registerWxApi(appId: "wxffb49855508a874f", universalLink: "https://pixcv.viewdepth.cn/universal/");
     logtoClient = LogtoClient(
       config: config,
-      httpClient: http.Client(),
+      httpClient: dioClient,
     );
     logtoClient.onLoginStateChange = ((state) {
       onLoginStateChange(state);
