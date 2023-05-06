@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logto_dart_sdk/logto_client.dart';
 import 'package:logto_dart_sdk/logto_dart_sdk.dart';
@@ -23,6 +24,7 @@ void main() {
     final logto = LogtoClient(
       config: config,
       storageProvider: MockStorageStrategy(),
+      httpClient: Dio()
     );
 
     expect(logto.config.appId, appId);

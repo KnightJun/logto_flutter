@@ -113,7 +113,7 @@ Future<String> directSignInAuthenticate(
   dio.options.followRedirects = false;
   Future<String> get302Address(String targetUrl) async {
     try {
-      await dio.get(targetUrl);
+      await dio.head(targetUrl);
     } on DioError catch (e) {
       if (e.response == null || (e.response!.statusCode != 302 && e.response!.statusCode != 303)) {
         rethrow;
