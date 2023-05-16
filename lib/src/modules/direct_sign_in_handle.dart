@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
@@ -26,8 +27,16 @@ class _SignInInfo {
   });
 
   _SocialConnector findSocialConnector(String connectorName) {
+    var platformName = SignInPlatform.Universal.name;
+    if (connectorName == SignInConnector.wechat.name) {
+      if (Platform.isIOS || Platform.isAndroid) {
+        platformName = SignInPlatform.Native.name;
+      } else {
+        platformName = SignInPlatform.Web.name;
+      }
+    }
     return socialConnectors.firstWhere(
-      (element) => element.target == connectorName,
+      (element) => element.target == connectorName && element.platform == platformName,
       orElse: () {
         throw "not support connector $connectorName";
       },
@@ -125,18 +134,14 @@ Future<String> directSignInAuthenticate(
     throw "can't find header location";
   }
 
-  Future<ConnectorResult> callGoogleVerify(String srcRedirectUri, String customRedirectUri) async {
+  Future<ConnectorResult> callWebVerify(String srcRedirectUri, String customRedirectUri) async {
     final redirectUri = _replaceQueryParam(srcRedirectUri, "redirect_uri", customRedirectUri);
     final googleBack = await webAuthAuthenticate(
         callbackUrlScheme: callbackUrlScheme, preferEphemeral: preferEphemeral, url: redirectUri);
     final googleBackUri = Uri.parse(googleBack);
-    return ConnectorResult(state: LogtoClientState.connectorAgree, data: {
-      "redirectUri": customRedirectUri,
-      "code": googleBackUri.queryParameters["code"],
-      "scope": googleBackUri.queryParameters["scope"],
-      "authuser": googleBackUri.queryParameters["authuser"],
-      "prompt": googleBackUri.queryParameters["prompt"]
-    });
+    final Map<String, String?> connectorData = Map.from(googleBackUri.queryParameters);
+    connectorData["redirectUri"] = customRedirectUri;
+    return ConnectorResult(state: LogtoClientState.connectorAgree, data: connectorData);
   }
 
   await get302Address(url);
@@ -159,10 +164,14 @@ Future<String> directSignInAuthenticate(
   ConnectorResult connectorData;
   switch (directSignInConfig.connector) {
     case SignInConnector.google:
-      connectorData = await callGoogleVerify(response.data["redirectTo"], customRedirectUri);
+      connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
       break;
     case SignInConnector.wechat:
-      connectorData = await directSignInConfig.onWechatCallback!(response.data["redirectTo"]);
+      if (connectorInfo.platform == SignInPlatform.Native.name) {
+        connectorData = await directSignInConfig.onWechatCallback!(response.data["redirectTo"]);
+      } else {
+        connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
+      }
       break;
     default:
       throw "unsupport connector ${directSignInConfig.connector.name}";

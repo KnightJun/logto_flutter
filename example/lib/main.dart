@@ -17,6 +17,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
+
 class MyApp extends StatelessWidget {
   const MyApp({Key? key}) : super(key: key);
 
@@ -74,15 +75,16 @@ class _MyHomePageState extends State<MyHomePage> {
     setState(() {});
   }
 
-String removeDomainFromUrl(String urlString) {
-  Uri url = Uri.parse(urlString);
-  return url.path + (url.query.isEmpty ? '' : '?${url.query}');
-}
+  String removeDomainFromUrl(String urlString) {
+    Uri url = Uri.parse(urlString);
+    return url.path + (url.query.isEmpty ? '' : '?${url.query}');
+  }
+
   void _init() async {
     final dioClient = dio.Dio();
     dioClient.interceptors.add(dio.InterceptorsWrapper(
       onRequest: (options, handler) {
-        if('PATCH' == options.method){
+        if ('PATCH' == options.method) {
           options.method = "POST";
         }
         options.path = removeDomainFromUrl(options.path);
@@ -119,7 +121,7 @@ String removeDomainFromUrl(String urlString) {
           redirectUri,
           directSignInConfig: DirectSignInConfig(
             connector: SignInConnector.google,
-            customRedirectUri: "https://dev-accounts.viewdepth.cn/deepviewapi/public/logincallback",
+            customRedirectUri: "https://viewdepth.cn/login_callback.html",
           ),
           getUserInfoCB: (userInfo) {
             print(userInfo.toJson());

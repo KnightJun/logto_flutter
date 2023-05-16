@@ -30,6 +30,8 @@ typedef AuthenticateFunction = Future<String> Function({
 
 enum SignInConnector { wechat, google }
 
+enum SignInPlatform { Universal, Web, Native }
+
 class ConnectorResult {
   final LogtoClientState state;
   final Map<String, String?>? data;
