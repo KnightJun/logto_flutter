@@ -151,37 +151,54 @@ Future<String> directSignInAuthenticate(
     await _signInInfoCompleter!.future;
   }
   signInInfo = _signInInfo ?? _SignInInfo.fromJson((await dio.get("/api/.well-known/sign-in-exp")).data);
-  final connectorInfo = signInInfo.findSocialConnector(directSignInConfig.connector.name);
-  final connectorRedirectUrl = "${Uri.parse(url).origin}/callback/${connectorInfo.id}";
-  final customRedirectUri = directSignInConfig.customRedirectUri ?? connectorRedirectUrl;
-  response = await dio.put("/api/interaction", data: {"event": "SignIn"});
-  response = await dio.post("/api/interaction/verification/social-authorization-uri", data: {
-    "connectorId": connectorInfo.id,
-    "state": "pixcv_${_generateRandomString()}",
-    "redirectUri": connectorRedirectUrl
-  });
-  changeState(LogtoClientState.waitingUserLogin);
-  ConnectorResult connectorData;
-  switch (directSignInConfig.connector) {
-    case SignInConnector.google:
-      connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
-      break;
-    case SignInConnector.wechat:
-      if (connectorInfo.platform == SignInPlatform.Native.name) {
-        connectorData = await directSignInConfig.onWechatCallback!(response.data["redirectTo"]);
-      } else {
-        connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
+  late final _SocialConnector connectorInfo;
+  if (directSignInConfig.connector == SignInConnector.direct) {
+    try {
+      response = await dio.put("/api/interaction", data: {
+        "event": "SignIn",
+        "identifier": {"password": directSignInConfig.directPassword, "username": directSignInConfig.directUsername}
+      });
+      changeState(LogtoClientState.connectorAgree);
+    } on DioError catch (e) {
+      if (e.response == null || e.response!.statusCode != 422) {
+        rethrow;
       }
-      break;
-    default:
-      throw "unsupport connector ${directSignInConfig.connector.name}";
+      changeState(LogtoClientState.invalidCredentials);
+      return "";
+    }
+  } else {
+    connectorInfo = signInInfo.findSocialConnector(directSignInConfig.connector.name);
+    final connectorRedirectUrl = "${Uri.parse(url).origin}/callback/${connectorInfo.id}";
+    final customRedirectUri = directSignInConfig.customRedirectUri ?? connectorRedirectUrl;
+    response = await dio.put("/api/interaction", data: {"event": "SignIn"});
+    response = await dio.post("/api/interaction/verification/social-authorization-uri", data: {
+      "connectorId": connectorInfo.id,
+      "state": "pixcv_${_generateRandomString()}",
+      "redirectUri": connectorRedirectUrl
+    });
+    changeState(LogtoClientState.waitingUserLogin);
+    ConnectorResult connectorData;
+    switch (directSignInConfig.connector) {
+      case SignInConnector.google:
+        connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
+        break;
+      case SignInConnector.wechat:
+        if (connectorInfo.platform == SignInPlatform.Native.name) {
+          connectorData = await directSignInConfig.onWechatCallback!(response.data["redirectTo"]);
+        } else {
+          connectorData = await callWebVerify(response.data["redirectTo"], customRedirectUri);
+        }
+        break;
+      default:
+        throw "unsupport connector ${directSignInConfig.connector.name}";
+    }
+    changeState(connectorData.state);
+    if (connectorData.state != LogtoClientState.connectorAgree) {
+      return "";
+    }
+    response = await dio.patch("/api/interaction/identifiers",
+        data: {"connectorData": connectorData.data, "connectorId": connectorInfo.id});
   }
-  changeState(connectorData.state);
-  if (connectorData.state != LogtoClientState.connectorAgree) {
-    return "";
-  }
-  response = await dio.patch("/api/interaction/identifiers",
-      data: {"connectorData": connectorData.data, "connectorId": connectorInfo.id});
   try {
     response = await dio.post("/api/interaction/submit");
   } on DioError catch (e) {

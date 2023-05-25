@@ -120,7 +120,9 @@ class _MyHomePageState extends State<MyHomePage> {
         await logtoClient.signIn(
           redirectUri,
           directSignInConfig: DirectSignInConfig(
-            connector: SignInConnector.google,
+            connector: SignInConnector.direct,
+            directUsername: "PixcvTest",
+            directPassword: "PixcvTest567",
             customRedirectUri: "https://viewdepth.cn/login_callback.html",
           ),
           getUserInfoCB: (userInfo) {
@@ -138,7 +140,7 @@ class _MyHomePageState extends State<MyHomePage> {
         textStyle: const TextStyle(fontSize: 20),
       ),
       onPressed: () async {
-        await logtoClient.signOut(redirectUri, completelySignOut: true);
+        await logtoClient.signOut(redirectUri, completelySignOut: false);
       },
       child: const Text('Sign Out'),
     );

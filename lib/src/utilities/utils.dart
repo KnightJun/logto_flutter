@@ -18,7 +18,8 @@ enum LogtoClientState {
   connectorAgree,
   connectorDecline,
   connectorCancel,
-  connectorError
+  connectorError,
+  invalidCredentials
 }
 
 typedef AuthenticateFunction = Future<String> Function({
@@ -28,7 +29,7 @@ typedef AuthenticateFunction = Future<String> Function({
   // ignore: non_constant_identifier_names
 });
 
-enum SignInConnector { wechat, google }
+enum SignInConnector { direct, wechat, google }
 
 enum SignInPlatform { Universal, Web, Native }
 
@@ -46,7 +47,9 @@ class DirectSignInConfig {
   final SignInConnector connector;
   final String? customRedirectUri;
   final CustomConnectorHandle? onWechatCallback;
-  DirectSignInConfig({required this.connector, this.customRedirectUri, this.onWechatCallback});
+  final String? directUsername;
+  final String? directPassword;
+  DirectSignInConfig({required this.connector, this.customRedirectUri, this.onWechatCallback, this.directUsername, this.directPassword});
 }
 
 Uri addQueryParameters(Uri url, Map<String, dynamic> parameters) =>
