@@ -169,8 +169,13 @@ class LogtoClient {
     }
   }
 
+  Uri _replaceDomainFromUrl(String urlString, String newDomain) {
+    Uri uri = Uri.parse(urlString).replace(host: Uri.parse(newDomain).host);
+    return uri;
+  }
+
   Future<void> _verifyIdToken(IdToken idToken, OidcProviderConfig oidcConfig) async {
-    final keyStore = JsonWebKeyStore()..addKeySetUrl(Uri.parse(oidcConfig.jwksUri));
+    final keyStore = JsonWebKeyStore()..addKeySetUrl(_replaceDomainFromUrl(oidcConfig.jwksUri, config.endpoint));
 
     if (!await idToken.verify(keyStore)) {
       throw LogtoAuthException(LogtoAuthExceptions.idTokenValidationError, 'invalid jws signature');
