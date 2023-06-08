@@ -2,7 +2,7 @@
 #include <fstream>
 #include <windows.h>
 using namespace std;
-#pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
+// #pragma comment(linker, "/subsystem:\"windows\" /entry:\"mainCRTStartup\"")
 
 void getExePath(std::string &exeDir, std::string &exeName)
 {
